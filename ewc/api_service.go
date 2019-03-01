@@ -15,7 +15,6 @@ func (srv *ApiService) get(url string, closure func(r *http.Response)) {
 		Body:       nil,
 		Method:     http.MethodGet,
 		RequestUrl: baseUrl + url,
-		// Token:      srv.getToken(),
 	}
 	srv.createRequest(request, closure)
 }
@@ -25,7 +24,6 @@ func (srv *ApiService) post(url string, data []byte, closure func(r *http.Respon
 		Body:       bytes.NewReader(data),
 		Method:     http.MethodPost,
 		RequestUrl: baseUrl + url,
-		// Token:      srv.getToken(),
 	}
 	srv.createRequest(request, closure)
 }
@@ -35,7 +33,6 @@ func (srv *ApiService) put(url string, data []byte, closure func(r *http.Respons
 		Body:       bytes.NewReader(data),
 		Method:     http.MethodPut,
 		RequestUrl: baseUrl + url,
-		// Token:      srv.getToken(),
 	}
 	srv.createRequest(request, closure)
 }
@@ -45,7 +42,6 @@ func (srv *ApiService) delete(url string, closure func(r *http.Response)) {
 		Body:       nil,
 		Method:     http.MethodDelete,
 		RequestUrl: baseUrl + url,
-		// Token:      srv.getToken(),
 	}
 	srv.createRequest(request, closure)
 }
@@ -60,21 +56,18 @@ func (srv *ApiService) createRequest(data ApiRequest, closure func(r *http.Respo
 	}
 
 	request.Header.Set("X-API", "true")
-	request.Header.Set("X-Auth-Id", userIdHeader)
+	request.Header.Set("X-Auth-Id", userIDHeader)
+	request.Header.Set("X-Auth-Token", jwt)
 	request.Header.Set("Content-Type", "application/json")
-	// request.Header.Set("Authorization", "Bearer "+data.Token)
+
 	response, err := client.Do(request)
 
 	if err != nil {
 		log.Printf("send %s request on %s error: %s", data.Method, data.RequestUrl, err.Error())
 		return
 	}
-	if response.StatusCode != http.StatusOK {
-		log.Println("invalid status", response.StatusCode)
-	}
 
 	closure(response)
-
 	_ = response.Body.Close()
 }
 

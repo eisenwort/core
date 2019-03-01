@@ -21,9 +21,11 @@ const (
 )
 
 var baseUrl = ""
-var userId = int64(0)
+var userID = int64(0)
 var dbPath = ""
-var userIdHeader = ""
+var userIDHeader = ""
 var connectionString = ""
+var alghorinthm = ""
+var jwt = ""
 
-var jiter = jsoniter.ConfigFastest
+var json = jsoniter.ConfigFastest
