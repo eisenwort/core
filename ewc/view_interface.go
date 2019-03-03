@@ -22,6 +22,7 @@ type ChatView interface {
 	DidClean(success bool)
 	DidGetMessage(message *Message)
 	DidGetMessageList(messages *MessageCollection)
+	DidDeleteMessage(isDeleted bool)
 }
 
 type MessageView interface {

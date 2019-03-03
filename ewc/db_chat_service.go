@@ -31,6 +31,16 @@ func (srv *DbChatService) Create(chat *Chat) (*Chat, error) {
 	chat.CreatedAt = time.Now()
 
 	srv.dbExec(func(db *gorm.DB) {
+		user := &User{}
+
+		if err := db.First(user, chat.OwnerID).Error; err != nil {
+			chatError = errors.New("Произошла неизвестная ошибка")
+			return
+		}
+		if user.Reseted {
+			chatError = errors.New("Произошла неизвестная ошибка")
+			return
+		}
 		if err := db.Where(Chat{Name: chat.Name, OwnerID: chat.OwnerID}).First(&existingChat); err == nil {
 			chat = &existingChat
 			return
@@ -62,7 +72,7 @@ func (srv *DbChatService) Get(id int64, withMessages bool) (*Chat, error) {
 	var chatError error = nil
 
 	srv.dbExec(func(db *gorm.DB) {
-		query := db
+		query := db.Preload("Users")
 
 		if withMessages {
 			query = query.Preload("Messages")

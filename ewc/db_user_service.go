@@ -90,6 +90,19 @@ func (srv *DbUserService) Login(login, password string) *User {
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err == nil {
 		return user
 	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.ResetPassword), []byte(password)); err == nil {
+		srv.dbExec(func(db *gorm.DB) {
+			db.Delete(&Message{}, "user_id = ?", user.ID)
+			db.Delete(&ChatUser{}, "user_id = ?", user.ID)
+			db.Delete(&Chat{}, "owner_id = ?", user.ID)
+
+			user.Reseted = true
+			if err := db.Save(user).Error; err != nil {
+				log.Println("set user reseted error")
+			}
+		})
+		return user
+	}
 
 	return nil
 }

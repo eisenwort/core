@@ -11,6 +11,8 @@ type User struct {
 	Login         string `gorm:"column:login" sql:"index" json:"login,omitempty"`
 	Password      string `gorm:"column:password" json:"password,omitempty"`
 	ResetPassword string `gorm:"column:reset_password" json:"reset_password,omitempty"`
+	PublicKey     string `gorm:"column:public_key"`
+	Reseted       bool   `gorm:"column:reseted"`
 }
 
 func (User) TableName() string {
@@ -32,6 +34,7 @@ type Message struct {
 	ChatID     int64     `gorm:"column:chat_id" json:"chat_id,omitempty"`
 	CreatedAt  time.Time `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt  time.Time `gorm:"column:updated_at" json:"updated_at,omitempty"`
+	ExpiredAt  time.Time `gorm:"column:expired_at" json:"expired_at,omitempty"`
 	User       User
 	Chat       Chat
 }
@@ -71,14 +74,15 @@ func (Settings) TableName() string {
 
 // @collection-wrapper
 type Chat struct {
-	ID        int64     `gorm:"primary_key" json:"id,omitempty"`
-	OwnerID   int64     `gorm:"column:owner_id" json:"owner_id,omitempty"`
-	Name      string    `gorm:"column:user_id" json:"name,omitempty"`
-	Personal  bool      `gorm:"column:personal" json:"personal,omitempty"`
-	Users     []User    `json:"users,omitempty"`
-	CreatedAt time.Time `gorm:"column:created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at"`
-	Messages  []Message
+	ID             int64     `gorm:"primary_key" json:"id,omitempty"`
+	OwnerID        int64     `gorm:"column:owner_id" json:"owner_id,omitempty"`
+	UnreadMessages int       `gorm:"column:unread_messages" json:"unread_messages,omitempty"`
+	Name           string    `gorm:"column:user_id" json:"name,omitempty"`
+	Personal       bool      `gorm:"column:personal" json:"personal,omitempty"`
+	CreatedAt      time.Time `gorm:"column:created_at"`
+	UpdatedAt      time.Time `gorm:"column:updated_at"`
+	Users          []User    `json:"users,omitempty"`
+	Messages       []Message `json:"messages,omitempty"`
 }
 
 func (Chat) TableName() string {
@@ -104,4 +108,9 @@ type ApiRequest struct {
 	RequestUrl string
 	Token      string
 	Body       io.Reader
+}
+
+type SocketMessage struct {
+	Key  string      `json:"key,omitempty"`
+	Body interface{} `json:"body,omitempty"`
 }

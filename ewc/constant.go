@@ -2,8 +2,6 @@ package ewc
 
 import (
 	"runtime"
-
-	jsoniter "github.com/json-iterator/go"
 )
 
 func init() {
@@ -28,4 +26,4 @@ var connectionString = ""
 var alghorinthm = ""
 var jwt = ""
 
-var json = jsoniter.ConfigFastest
+// var json = jsoniter.ConfigFastest

@@ -5,9 +5,18 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type ApiService struct {
+	RequestErrorChan chan bool
+}
+
+func NewApiService() *ApiService {
+	srv := new(ApiService)
+	srv.RequestErrorChan = make(chan bool, chanSize)
+
+	return srv
 }
 
 func (srv *ApiService) get(url string, closure func(r *http.Response)) {
@@ -48,6 +57,7 @@ func (srv *ApiService) delete(url string, closure func(r *http.Response)) {
 
 func (srv *ApiService) createRequest(data ApiRequest, closure func(r *http.Response)) {
 	client := &http.Client{}
+	client.Timeout = time.Second * 10
 	request, err := http.NewRequest(data.Method, data.RequestUrl, data.Body)
 
 	if err != nil {
