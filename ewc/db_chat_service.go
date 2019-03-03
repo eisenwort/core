@@ -75,12 +75,12 @@ func (srv *DbChatService) Get(id int64, withMessages bool) (*Chat, error) {
 	return chat, chatError
 }
 
-func (srv *DbChatService) GetForUser() ([]*Chat, error) {
+func (srv *DbChatService) GetForUser(ownerID int64) ([]*Chat, error) {
 	var chats = make([]*Chat, 0)
 	var chatError error = nil
 
 	srv.dbExec(func(db *gorm.DB) {
-		if err := db.Preload("Users").Where(Chat{OwnerID: userID}).Find(chats).Error; err != nil {
+		if err := db.Preload("Users").Where(Chat{OwnerID: ownerID}).Find(chats).Error; err != nil {
 			chatError = errors.New("Невозможно получить чат")
 		}
 	})

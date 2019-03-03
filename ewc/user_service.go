@@ -1,6 +1,7 @@
 package ewc
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -42,13 +43,12 @@ func (srv *UserService) Register(login, password string) {
 	}
 
 	srv.post("/users", data, func(r *http.Response) {
+		if r.StatusCode == http.StatusConflict {
+			srv.ErrorsChan <- "Логин уже занят"
+			return
+		}
 		if r.StatusCode != http.StatusOK {
-			errorData := make(map[string]string)
-
-			if err := json.NewDecoder(r.Body).Decode(&errorData); err == nil {
-				srv.ErrorsChan <- errorData["error"]
-			}
-
+			srv.ErrorsChan <- "Ошибка регистрации"
 			return
 		}
 		if err := json.NewDecoder(r.Body).Decode(user); err != nil {
@@ -92,6 +92,10 @@ func (srv *UserService) Update(item *User) {
 	user := new(User)
 
 	srv.put(requestUrl, data, func(r *http.Response) {
+		if r.StatusCode == http.StatusConflict {
+			srv.ErrorsChan <- "Логин уже занят"
+			return
+		}
 		if err := json.NewDecoder(r.Body).Decode(user); err != nil {
 			srv.UserChan <- nil
 			return
@@ -125,6 +129,7 @@ func (srv *UserService) Login(login, password string) {
 	if user.ID == 0 {
 		return
 	}
+
 	srv.saveChan <- user
 	srv.UserChan <- user
 	userID = user.ID

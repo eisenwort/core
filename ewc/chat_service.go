@@ -1,6 +1,7 @@
 package ewc
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -31,7 +32,7 @@ func NewChatService() *ChatService {
 
 func (srv *ChatService) GetChats() {
 	chatCollection := NewChatCollection()
-	chats, err := srv.dbService.GetForUser()
+	chats, err := srv.dbService.GetForUser(userID)
 
 	if err == nil {
 		chatCollection.s = chats
