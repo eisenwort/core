@@ -58,6 +58,8 @@ func (pr *LoginPresenter) listeners() {
 			pr.view.ShowError(errorString)
 		case errorString := <-pr.errorsChan:
 			pr.view.ShowError(errorString)
+		case isSuccess := <-pr.userService.LoginChan:
+			pr.view.DidLogin(isSuccess)
 		}
 	}
 }

@@ -56,8 +56,9 @@ func (srv *ApiService) delete(url string, closure func(r *http.Response)) {
 }
 
 func (srv *ApiService) createRequest(data ApiRequest, closure func(r *http.Response)) {
-	client := &http.Client{}
-	client.Timeout = time.Second * 10
+	client := &http.Client{
+		Timeout: time.Second * 10,
+	}
 	request, err := http.NewRequest(data.Method, data.RequestUrl, data.Body)
 
 	if err != nil {
@@ -66,8 +67,8 @@ func (srv *ApiService) createRequest(data ApiRequest, closure func(r *http.Respo
 	}
 
 	request.Header.Set("X-API", "true")
-	request.Header.Set("X-Auth-Id", userIDHeader)
-	request.Header.Set("X-Auth-Token", jwt)
+	request.Header.Set(IdHeader, userIDHeader)
+	request.Header.Set("X-Auth-Token", jwtToken)
 	request.Header.Set("Content-Type", "application/json")
 
 	response, err := client.Do(request)
@@ -81,7 +82,7 @@ func (srv *ApiService) createRequest(data ApiRequest, closure func(r *http.Respo
 	_ = response.Body.Close()
 }
 
-func (srv *ApiService) createUrl(hostUrl string, params map[string]string) string {
+func createUrl(hostUrl string, params map[string]string) string {
 	if len(params) == 0 {
 		return hostUrl
 	}

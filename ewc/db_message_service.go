@@ -20,8 +20,7 @@ func NewDbMessageService(driver, connectionString string) *DbMessageService {
 	srv.updateChatChan = make(chan int64, chanSize)
 
 	srv.dbExec(func(db *gorm.DB) {
-		db.AutoMigrate(User{})
-		db.AutoMigrate(Friend{})
+		db.AutoMigrate(&Message{})
 	})
 
 	go srv.listeners()
@@ -54,6 +53,20 @@ func (srv *DbMessageService) Delete(msg *Message) bool {
 		if err := db.Delete(Message{}, "id = ?", msg.ID).Error; err != nil {
 			log.Println("delete message error:", err)
 			result = false
+		}
+	})
+
+	return result
+}
+
+// TODO: page
+func (srv *DbMessageService) GetByChat(chatID int64) []*Message {
+	result := make([]*Message, 0)
+
+	srv.dbExec(func(db *gorm.DB) {
+		if err := db.Where(Message{ChatID: chatID}).Order("created_at desc").Find(&result).Error; err != nil {
+			log.Println("get message by chat error:", err)
+			result = nil
 		}
 	})
 

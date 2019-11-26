@@ -2,8 +2,12 @@ package ewc
 
 //go:generate go-mobile-collection $GOFILE
 import (
+	"crypto/rsa"
+	"hash"
 	"io"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
 )
 
 type User struct {
@@ -12,6 +16,7 @@ type User struct {
 	Password      string `gorm:"column:password" json:"password,omitempty"`
 	ResetPassword string `gorm:"column:reset_password" json:"reset_password,omitempty"`
 	PublicKey     string `gorm:"column:public_key"`
+	PrivateKey    string `gorm:"column:private_key"`
 	Reseted       bool   `gorm:"column:reseted"`
 }
 
@@ -26,12 +31,12 @@ func (v *User) Equal(rhs *User) bool {
 // @collection-wrapper
 type Message struct {
 	ID         int64     `gorm:"primary_key" json:"id,omitempty"`
+	UserID     int64     `gorm:"column:user_id" json:"sender_id,omitempty"`
+	ChatID     int64     `gorm:"column:chat_id" json:"chat_id,omitempty"`
 	Text       string    `gorm:"column:text" json:"text,omitempty"`
 	ImageURL   string    `gorm:"column:image_url" json:"image_url,omitempty"`
 	FileURL    string    `gorm:"column:file_url" json:"file_url,omitempty"`
 	Alghorithm string    `gorm:"column:alghorithm" json:"alghorithm,omitempty"`
-	UserID     int64     `gorm:"column:user_id" json:"sender_id,omitempty"`
-	ChatID     int64     `gorm:"column:chat_id" json:"chat_id,omitempty"`
 	CreatedAt  time.Time `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt  time.Time `gorm:"column:updated_at" json:"updated_at,omitempty"`
 	ExpiredAt  time.Time `gorm:"column:expired_at" json:"expired_at,omitempty"`
@@ -113,4 +118,20 @@ type ApiRequest struct {
 type SocketMessage struct {
 	Key  string      `json:"key,omitempty"`
 	Body interface{} `json:"body,omitempty"`
+}
+
+type EncryptData struct {
+	Message   []byte
+	Label     []byte
+	PublicKey *rsa.PublicKey
+	Hash      hash.Hash
+}
+
+type JwtClaims struct {
+	*jwt.MapClaims
+	Id int64
+}
+
+type TokenData struct {
+	Token string `json:"token,omitempty"`
 }

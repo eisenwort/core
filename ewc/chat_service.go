@@ -10,6 +10,7 @@ type ChatService struct {
 	BaseService
 	ApiService
 	dbService      *DbChatService
+	dbUserService  *DbUserService
 	ChatChan       chan *Chat
 	ChatListChan   chan *ChatCollection
 	ChatDeleteChan chan bool
@@ -19,6 +20,7 @@ type ChatService struct {
 func NewChatService() *ChatService {
 	srv := new(ChatService)
 	srv.dbService = NewDbChatService(driver, connectionString)
+	srv.dbUserService = NewDbUserService(driver, connectionString)
 	srv.ErrorsChan = make(chan string, chanSize)
 	srv.InfoChan = make(chan string, chanSize)
 	srv.ChatChan = make(chan *Chat, chanSize)
@@ -73,7 +75,82 @@ func (srv *ChatService) Get(id int64, withMessages bool) {
 	})
 }
 
+func (srv *ChatService) CreatePersonalChat(login string) {
+	self := srv.dbUserService.Get(userID)
+	user := &User{}
+
+	if self.Reseted {
+		srv.ErrorsChan <- "Ошибка создания чата"
+		return
+	}
+	srv.get("/users/login/"+login, func(r *http.Response) {
+		if r.StatusCode != http.StatusOK {
+			srv.ErrorsChan <- fmt.Sprintf("Пользователя с ником %s не существует", login)
+			user = nil
+			return
+		}
+		if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+			srv.ErrorsChan <- "Ошибка создания чата"
+			user = nil
+		}
+	})
+	if user == nil {
+		return
+	}
+
+	chat := &Chat{
+		Users:    []User{*user},
+		OwnerID:  userID,
+		Personal: true,
+	}
+	data, _ := json.Marshal(chat)
+
+	srv.post("/chats", data, func(r *http.Response) {
+		if r.StatusCode != http.StatusCreated {
+			srv.ErrorsChan <- "Ошибка создания чата"
+			return
+		}
+		if err := json.NewDecoder(r.Body).Decode(chat); err != nil {
+			srv.ErrorsChan <- "Ошибка создания чата"
+			return
+		}
+
+		srv.ChatChan <- chat
+		srv.dbService.Create(chat)
+	})
+}
+
 func (srv *ChatService) Create(chat *Chat) {
+	self := srv.dbUserService.Get(userID)
+
+	if self.Reseted {
+		srv.ErrorsChan <- "Ошибка создания чата"
+		return
+	}
+	if chat.Personal {
+		login := chat.Users[0].Login
+		user := srv.dbUserService.GetByLogin(login)
+
+		if user == nil {
+			user := &User{}
+			srv.get("/users/login/"+login, func(r *http.Response) {
+				if r.StatusCode != http.StatusOK {
+					srv.ErrorsChan <- fmt.Sprintf("Пользователя с ником %s не существует", login)
+					return
+				}
+				if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+					srv.ErrorsChan <- "Ошибка создания чата"
+					user = nil
+				}
+			})
+			if user == nil {
+				return
+			}
+		} else {
+			chat.Users[0] = *user
+		}
+	}
+
 	data, _ := json.Marshal(chat)
 
 	srv.post("/chats", data, func(r *http.Response) {

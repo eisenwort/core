@@ -13,9 +13,10 @@ func init() {
 }
 
 const (
-	dbName   = "Eisenwort.sqlite"
-	chanSize = 10
+	dbName   = "ewc.sqlite"
+	chanSize = 5
 	driver   = "sqlite3"
+	IdHeader = "X-Auth-Id"
 )
 
 var baseUrl = ""
@@ -24,6 +25,4 @@ var dbPath = ""
 var userIDHeader = ""
 var connectionString = ""
 var alghorinthm = ""
-var jwt = ""
-
-// var json = jsoniter.ConfigFastest
+var jwtToken = ""

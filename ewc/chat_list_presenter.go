@@ -20,12 +20,25 @@ func (pr *ChatListPresenter) GetList() {
 	go pr.chatService.GetChats()
 }
 
+func (pr *ChatListPresenter) CreatePersonalChat(login string) {
+	if len(login) == 0 {
+		pr.errorsChan <- "Нельзя создать чат без участников"
+		return
+	}
+
+	pr.chatService.CreatePersonalChat(login)
+}
+
 func (pr *ChatListPresenter) listeners() {
 	for {
 		select {
 		case chatList := <-pr.chatService.ChatListChan:
 			pr.view.DidGetChatList(chatList)
+		case chat := <-pr.chatService.ChatChan:
+			pr.view.DidGetChat(chat)
 		case errorString := <-pr.errorsChan:
+			pr.view.ShowError(errorString)
+		case errorString := <-pr.chatService.ErrorsChan:
 			pr.view.ShowError(errorString)
 		}
 	}

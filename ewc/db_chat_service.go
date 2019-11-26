@@ -18,8 +18,8 @@ func NewDbChatService(driver, connectionString string) *DbChatService {
 	srv.connectionString = connectionString
 
 	srv.dbExec(func(db *gorm.DB) {
-		db.AutoMigrate(Chat{})
-		db.AutoMigrate(ChatUser{})
+		db.AutoMigrate(&Chat{})
+		db.AutoMigrate(&ChatUser{})
 	})
 
 	return srv

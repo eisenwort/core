@@ -18,8 +18,8 @@ func NewDbUserService(driver, connectionString string) *DbUserService {
 	srv.connectionString = connectionString
 
 	srv.dbExec(func(db *gorm.DB) {
-		db.AutoMigrate(User{})
-		db.AutoMigrate(Friend{})
+		db.AutoMigrate(&User{})
+		db.AutoMigrate(&Friend{})
 	})
 
 	return srv
@@ -134,6 +134,18 @@ func (srv *DbUserService) Get(id int64) *User {
 
 	srv.dbExec(func(db *gorm.DB) {
 		if err := db.First(user, id).Error; err != nil {
+			user = nil
+		}
+	})
+
+	return user
+}
+
+func (srv *DbUserService) GetByLogin(login string) *User {
+	user := new(User)
+
+	srv.dbExec(func(db *gorm.DB) {
+		if err := db.Where(&User{Login: login}).First(user).Error; err != nil {
 			user = nil
 		}
 	})

@@ -8,11 +8,13 @@ type View interface {
 type LoginView interface {
 	View
 	DidGetUser(user *User)
+	DidLogin(isSuccess bool)
 }
 
 type ChatListView interface {
 	View
 	DidGetChatList(chats *ChatCollection)
+	DidGetChat(chat *Chat)
 }
 
 type ChatView interface {
@@ -22,7 +24,7 @@ type ChatView interface {
 	DidClean(success bool)
 	DidGetMessage(message *Message)
 	DidGetMessageList(messages *MessageCollection)
-	DidDeleteMessage(isDeleted bool)
+	DidDeleteMessage(id int64)
 }
 
 type MessageView interface {
