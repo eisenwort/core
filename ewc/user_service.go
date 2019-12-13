@@ -108,7 +108,7 @@ func (srv *UserService) Update(item *User) {
 			srv.ErrorsChan <- "Логин уже занят"
 			return
 		}
-		if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 			srv.UserChan <- nil
 			return
 		}

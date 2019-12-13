@@ -1,6 +1,7 @@
 package ewc
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
