@@ -13,16 +13,15 @@ func init() {
 }
 
 const (
-	dbName   = "ewc.sqlite"
-	chanSize = 5
-	driver   = "sqlite3"
-	IdHeader = "X-Auth-Id"
+	dbName      = "ewc.sqlite"
+	chanSize    = 5
+	IdHeader    = "X-Auth-Id"
+	TokenHeader = "X-Auth-Token"
 )
 
 var baseUrl = ""
 var userID = int64(0)
-var dbPath = ""
 var userIDHeader = ""
 var connectionString = ""
-var alghorinthm = ""
 var jwtToken = ""
+var driver = ""

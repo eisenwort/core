@@ -12,13 +12,12 @@ type DbUserService struct {
 	BaseDbService
 }
 
-func NewDbUserService(driver, connectionString string) *DbUserService {
+func NewDbUserService() *DbUserService {
 	srv := new(DbUserService)
-	srv.driver = driver
-	srv.connectionString = connectionString
 
 	srv.dbExec(func(db *gorm.DB) {
 		db.AutoMigrate(&User{})
+		db.AutoMigrate(&UserData{})
 		db.AutoMigrate(&Friend{})
 	})
 
@@ -71,9 +70,20 @@ func (srv *DbUserService) Save(user *User) *User {
 	return user
 }
 
+func (srv *DbUserService) SaveUserData(data UserData) {
+	srv.dbExec(func(db *gorm.DB) {
+		db.Delete(&UserData{})
+
+		if err := db.Save(&data).Error; err != nil {
+			log.Println("save user data error:", err)
+		}
+	})
+}
+
 func (srv *DbUserService) Migrate() {
 	srv.dbExec(func(db *gorm.DB) {
 		db.AutoMigrate(User{})
+		db.AutoMigrate(UserData{})
 		db.AutoMigrate(Friend{})
 	})
 }
@@ -139,6 +149,16 @@ func (srv *DbUserService) Get(id int64) *User {
 	})
 
 	return user
+}
+
+func (srv *DbUserService) GetUserData() UserData {
+	userData := UserData{}
+
+	srv.dbExec(func(db *gorm.DB) {
+		db.First(&userData)
+	})
+
+	return userData
 }
 
 func (srv *DbUserService) GetByLogin(login string) *User {

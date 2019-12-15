@@ -4,7 +4,6 @@ package ewc
 import (
 	"crypto/rsa"
 	"hash"
-	"io"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -26,6 +25,10 @@ func (User) TableName() string {
 
 func (v *User) Equal(rhs *User) bool {
 	return v.Login == rhs.Login
+}
+
+type UserData struct {
+	RefreshToken string `gorm:"column:refresh_token"`
 }
 
 // @collection-wrapper
@@ -112,7 +115,7 @@ type ApiRequest struct {
 	Method     string
 	RequestUrl string
 	Token      string
-	Body       io.Reader
+	Body       []byte
 }
 
 type SocketMessage struct {
@@ -133,5 +136,12 @@ type JwtClaims struct {
 }
 
 type TokenData struct {
-	Token string `json:"token,omitempty"`
+	Token        string `json:"token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+}
+
+type SetupData struct {
+	DbPath           string
+	DbDriver         string
+	ConnectionString string
 }

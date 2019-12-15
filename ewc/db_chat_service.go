@@ -12,10 +12,8 @@ type DbChatService struct {
 	BaseDbService
 }
 
-func NewDbChatService(driver, connectionString string) *DbChatService {
+func NewDbChatService() *DbChatService {
 	srv := new(DbChatService)
-	srv.driver = driver
-	srv.connectionString = connectionString
 
 	srv.dbExec(func(db *gorm.DB) {
 		db.AutoMigrate(&Chat{})

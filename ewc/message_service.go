@@ -19,8 +19,8 @@ type MessageService struct {
 func NewMessageService() *MessageService {
 	srv := new(MessageService)
 	srv.api = NewApiService()
-	srv.dbService = NewDbMessageService(driver, connectionString)
-	srv.dbUserService = NewDbUserService(driver, connectionString)
+	srv.dbService = NewDbMessageService()
+	srv.dbUserService = NewDbUserService()
 	srv.ErrorsChan = make(chan string, chanSize)
 	srv.InfoChan = make(chan string, chanSize)
 	srv.MessageChan = make(chan *Message, chanSize)
@@ -39,8 +39,7 @@ func (srv *MessageService) Send(msg *Message, text string) {
 		return
 	}
 
-	data, _ := json.Marshal(msg)
-	srv.api.post("/messages", data, func(r *http.Response) {
+	srv.api.post("/messages", msg, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка отправки сообщения"
 			return

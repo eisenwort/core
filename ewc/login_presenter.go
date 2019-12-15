@@ -1,9 +1,5 @@
 package ewc
 
-import (
-	"strings"
-)
-
 type LoginPresenter struct {
 	BasePresenter
 	userService *UserService
@@ -38,15 +34,6 @@ func (pr *LoginPresenter) Register(login, password string) {
 		return
 	}
 	go pr.userService.Register(login, password)
-}
-
-func (pr *LoginPresenter) SetDbPath(path string) {
-	if !strings.HasSuffix(path, "/") {
-		path += "/"
-	}
-	dbPath = path
-	connectionString = dbPath + dbName
-	pr.userService.Migrate()
 }
 
 func (pr *LoginPresenter) listeners() {

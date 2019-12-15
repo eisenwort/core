@@ -9,9 +9,7 @@ import (
 )
 
 type BaseDbService struct {
-	driver           string
-	connectionString string
-	ErrorsChan       chan string
+	ErrorsChan chan string
 }
 
 func (srv *BaseDbService) dbExec(closure func(db *gorm.DB)) {
@@ -23,11 +21,13 @@ func (srv *BaseDbService) dbExec(closure func(db *gorm.DB)) {
 
 	closure(db)
 
-	db.Close()
+	if err := db.Close(); err != nil {
+		log.Println("close db error:", err)
+	}
 }
 
 func (srv *BaseDbService) getDb() *gorm.DB {
-	if srv.driver == "sqlite3" {
+	if driver == "sqlite3" {
 		if _, err := os.Stat(connectionString); os.IsNotExist(err) {
 			file, err := os.Create(connectionString)
 
@@ -36,12 +36,13 @@ func (srv *BaseDbService) getDb() *gorm.DB {
 				log.Println(connectionString)
 				return nil
 			}
-
-			file.Close()
+			if err := file.Close(); err != nil {
+				log.Println("close db file error:", err)
+			}
 		}
 	}
 
-	db, err := gorm.Open(srv.driver, srv.connectionString)
+	db, err := gorm.Open(driver, connectionString)
 
 	if err != nil {
 		log.Println("open db error:", err.Error())

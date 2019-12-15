@@ -2,6 +2,7 @@ package ewc
 
 import (
 	"bytes"
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/url"
@@ -10,11 +11,15 @@ import (
 
 type ApiService struct {
 	RequestErrorChan chan bool
+	client           http.Client
 }
 
 func NewApiService() *ApiService {
 	srv := new(ApiService)
 	srv.RequestErrorChan = make(chan bool, chanSize)
+	srv.client = http.Client{
+		Timeout: time.Second * 10,
+	}
 
 	return srv
 }
@@ -23,25 +28,39 @@ func (srv *ApiService) get(url string, closure func(r *http.Response)) {
 	request := ApiRequest{
 		Body:       nil,
 		Method:     http.MethodGet,
-		RequestUrl: baseUrl + url,
+		RequestUrl: url,
 	}
 	srv.createRequest(request, closure)
 }
 
-func (srv *ApiService) post(url string, data []byte, closure func(r *http.Response)) {
+func (srv *ApiService) post(url string, data interface{}, closure func(r *http.Response)) {
+	jsonData, err := json.Marshal(data)
+
+	if err != nil {
+		log.Println("marshall POST data error:", err)
+		return
+	}
+
 	request := ApiRequest{
-		Body:       bytes.NewReader(data),
+		Body:       jsonData,
 		Method:     http.MethodPost,
-		RequestUrl: baseUrl + url,
+		RequestUrl: url,
 	}
 	srv.createRequest(request, closure)
 }
 
-func (srv *ApiService) put(url string, data []byte, closure func(r *http.Response)) {
+func (srv *ApiService) put(url string, data interface{}, closure func(r *http.Response)) {
+	jsonData, err := json.Marshal(data)
+
+	if err != nil {
+		log.Println("marshall POST data error:", err)
+		return
+	}
+
 	request := ApiRequest{
-		Body:       bytes.NewReader(data),
+		Body:       jsonData,
 		Method:     http.MethodPut,
-		RequestUrl: baseUrl + url,
+		RequestUrl: url,
 	}
 	srv.createRequest(request, closure)
 }
@@ -50,16 +69,17 @@ func (srv *ApiService) delete(url string, closure func(r *http.Response)) {
 	request := ApiRequest{
 		Body:       nil,
 		Method:     http.MethodDelete,
-		RequestUrl: baseUrl + url,
+		RequestUrl: url,
 	}
 	srv.createRequest(request, closure)
 }
 
 func (srv *ApiService) createRequest(data ApiRequest, closure func(r *http.Response)) {
-	client := &http.Client{
-		Timeout: time.Second * 10,
-	}
-	request, err := http.NewRequest(data.Method, data.RequestUrl, data.Body)
+	request, err := http.NewRequest(
+		data.Method,
+		baseUrl+data.RequestUrl,
+		bytes.NewReader(data.Body),
+	)
 
 	if err != nil {
 		log.Printf("create %s request on %s error: %s", data.Method, data.RequestUrl, err.Error())
@@ -68,10 +88,10 @@ func (srv *ApiService) createRequest(data ApiRequest, closure func(r *http.Respo
 
 	request.Header.Set("X-API", "true")
 	request.Header.Set(IdHeader, userIDHeader)
-	request.Header.Set("X-Auth-Token", jwtToken)
+	request.Header.Set(TokenHeader, jwtToken)
 	request.Header.Set("Content-Type", "application/json")
 
-	response, err := client.Do(request)
+	response, err := srv.client.Do(request)
 
 	if err != nil {
 		log.Printf("send %s request on %s error: %s", data.Method, data.RequestUrl, err.Error())
@@ -79,7 +99,10 @@ func (srv *ApiService) createRequest(data ApiRequest, closure func(r *http.Respo
 	}
 
 	closure(response)
-	_ = response.Body.Close()
+
+	if err := response.Body.Close(); err != nil {
+		log.Println("close response error:", err)
+	}
 }
 
 func createUrl(hostUrl string, params map[string]string) string {

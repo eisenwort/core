@@ -13,10 +13,8 @@ type DbMessageService struct {
 	updateChatChan chan int64
 }
 
-func NewDbMessageService(driver, connectionString string) *DbMessageService {
+func NewDbMessageService() *DbMessageService {
 	srv := new(DbMessageService)
-	srv.driver = driver
-	srv.connectionString = connectionString
 	srv.updateChatChan = make(chan int64, chanSize)
 
 	srv.dbExec(func(db *gorm.DB) {

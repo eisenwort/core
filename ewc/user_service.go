@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/dgrijalva/jwt-go"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
@@ -23,7 +22,7 @@ type UserService struct {
 
 func NewUserService() *UserService {
 	srv := new(UserService)
-	srv.dbService = NewDbUserService(driver, connectionString)
+	srv.dbService = NewDbUserService()
 	srv.saveChan = make(chan User, chanSize)
 	srv.getChan = make(chan int64, 1)
 	srv.ErrorsChan = make(chan string, chanSize)
@@ -36,15 +35,9 @@ func NewUserService() *UserService {
 
 func (srv *UserService) Register(login, password string) {
 	tokenData := TokenData{}
-	data, err := json.Marshal(map[string]string{
+	data := map[string]string{
 		"login":    login,
 		"password": password,
-	})
-
-	if err != nil {
-		log.Println("marshal regiatration data error:", err)
-		srv.ErrorsChan <- "Ошибка регистрации"
-		return
 	}
 
 	srv.post("/users", data, func(r *http.Response) {
@@ -69,27 +62,45 @@ func (srv *UserService) Register(login, password string) {
 
 	srv.LoginChan <- true
 
-	claims := JwtClaims{}
-	_, err = jwt.ParseWithClaims(tokenData.Token, &claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte("secret"), nil
-	})
+	claims := getClaims(tokenData.Token)
 	userID = claims.Id
 	userIDHeader = fmt.Sprintf("%d", claims.Id)
 
 	srv.getChan <- claims.Id
+	srv.dbService.SaveUserData(UserData{RefreshToken: tokenData.RefreshToken})
 }
 
 func (srv *UserService) IsLogin() {
 	user := srv.dbService.IsLogin()
 
 	if user == nil {
-		// srv.UserChan <- nil
 		srv.LoginChan <- false
-	} else {
-		srv.LoginChan <- true
-		userID = user.ID
-		userIDHeader = fmt.Sprintf("%d", user.ID)
+		return
 	}
+
+	userID = user.ID
+	userIDHeader = fmt.Sprintf("%d", user.ID)
+
+	userData := srv.dbService.GetUserData()
+	jwtToken = userData.RefreshToken
+	requestUrl := fmt.Sprintf("/users/%d/refresh", userID)
+
+	srv.post(requestUrl, nil, func(r *http.Response) {
+		tokenData := TokenData{}
+
+		if r.StatusCode != http.StatusOK {
+			srv.LoginChan <- false
+			return
+		}
+		if err := json.NewDecoder(r.Body).Decode(&tokenData); err != nil {
+			log.Println("decode refresh token data error:", err)
+			return
+		}
+
+		jwtToken = tokenData.Token
+		srv.LoginChan <- true
+		srv.dbService.SaveUserData(UserData{RefreshToken: tokenData.RefreshToken})
+	})
 }
 
 func (srv *UserService) Logout() {
@@ -99,11 +110,10 @@ func (srv *UserService) Logout() {
 }
 
 func (srv *UserService) Update(item *User) {
-	data, _ := json.Marshal(map[string]string{})
 	requestUrl := fmt.Sprintf("/users/%d", item.ID)
 	user := User{}
 
-	srv.put(requestUrl, data, func(r *http.Response) {
+	srv.put(requestUrl, item, func(r *http.Response) {
 		if r.StatusCode == http.StatusConflict {
 			srv.ErrorsChan <- "Логин уже занят"
 			return
@@ -118,15 +128,11 @@ func (srv *UserService) Update(item *User) {
 }
 
 func (srv *UserService) Login(login, password string) {
-	data, err := json.Marshal(map[string]string{
+	data := map[string]string{
 		"login":    login,
 		"password": password,
-	})
-	tokenData := TokenData{}
-
-	if err != nil {
-		return
 	}
+	tokenData := TokenData{}
 
 	srv.post("/login", data, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
@@ -143,19 +149,23 @@ func (srv *UserService) Login(login, password string) {
 		return
 	}
 
+	jwtToken = tokenData.Token
 	srv.LoginChan <- true
-	claims := JwtClaims{}
-	_, err = jwt.ParseWithClaims(tokenData.Token, &claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte("secret"), nil
-	})
 
+	claims := getClaims(tokenData.Token)
 	userID = claims.Id
 	userIDHeader = fmt.Sprintf("%d", claims.Id)
 
 	srv.getChan <- claims.Id
+	srv.dbService.SaveUserData(UserData{RefreshToken: tokenData.RefreshToken})
 }
 
 func (srv *UserService) getUser(id int64) {
+	if id == 0 {
+		srv.ErrorsChan <- "Не удалось получить пользователя"
+		return
+	}
+
 	requestUrl := fmt.Sprintf("/users/%d", id)
 	user := User{}
 
@@ -165,10 +175,6 @@ func (srv *UserService) getUser(id int64) {
 		}
 		srv.saveChan <- user
 	})
-}
-
-func (srv *UserService) Migrate() {
-	srv.dbService.Migrate()
 }
 
 func (srv *UserService) listeners() {

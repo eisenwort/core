@@ -19,8 +19,8 @@ type ChatService struct {
 
 func NewChatService() *ChatService {
 	srv := new(ChatService)
-	srv.dbService = NewDbChatService(driver, connectionString)
-	srv.dbUserService = NewDbUserService(driver, connectionString)
+	srv.dbService = NewDbChatService()
+	srv.dbUserService = NewDbUserService()
 	srv.ErrorsChan = make(chan string, chanSize)
 	srv.InfoChan = make(chan string, chanSize)
 	srv.ChatChan = make(chan *Chat, chanSize)
@@ -103,9 +103,7 @@ func (srv *ChatService) CreatePersonalChat(login string) {
 		OwnerID:  userID,
 		Personal: true,
 	}
-	data, _ := json.Marshal(chat)
-
-	srv.post("/chats", data, func(r *http.Response) {
+	srv.post("/chats", chat, func(r *http.Response) {
 		if r.StatusCode != http.StatusCreated {
 			srv.ErrorsChan <- "Ошибка создания чата"
 			return
@@ -151,9 +149,7 @@ func (srv *ChatService) Create(chat *Chat) {
 		}
 	}
 
-	data, _ := json.Marshal(chat)
-
-	srv.post("/chats", data, func(r *http.Response) {
+	srv.post("/chats", chat, func(r *http.Response) {
 		if r.StatusCode != http.StatusCreated {
 			srv.ErrorsChan <- "Ошибка создания чата"
 			return
