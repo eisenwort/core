@@ -12,11 +12,11 @@ import (
 type User struct {
 	ID            int64  `gorm:"primary_key" json:"id,omitempty"`
 	Login         string `gorm:"column:login" sql:"index" json:"login,omitempty"`
-	Password      string `gorm:"column:password" json:"password,omitempty"`
-	ResetPassword string `gorm:"column:reset_password" json:"reset_password,omitempty"`
+	Password      string `gorm:"column:password"`
+	ResetPassword string `gorm:"column:reset_password"`
 	PublicKey     string `gorm:"column:public_key"`
 	PrivateKey    string `gorm:"column:private_key"`
-	Reseted       bool   `gorm:"column:reseted"`
+	Reseted       bool   `gorm:"column:reseted"  json:"reseted,omitempty"`
 }
 
 func (User) TableName() string {
@@ -105,6 +105,8 @@ type ChatUser struct {
 	ID     int64 `gorm:"primary_key" json:"id,omitempty"`
 	ChatID int64 `gorm:"column:chat_id"`
 	UserID int64 `gorm:"column:user_id"`
+	Chat   Chat
+	User   User
 }
 
 func (ChatUser) TableName() string {

@@ -26,7 +26,7 @@ func NewDbUserService() *DbUserService {
 
 func (srv *DbUserService) Create(login, password string) (*User, error) {
 	existingUser := new(User)
-	var user *User = nil
+	var user = new(User)
 	var userError error = nil
 
 	srv.dbExec(func(db *gorm.DB) {

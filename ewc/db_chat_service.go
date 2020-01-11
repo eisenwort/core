@@ -46,6 +46,15 @@ func (srv *DbChatService) Create(chat *Chat) (*Chat, error) {
 		if err := db.Save(&chat).Error; err != nil {
 			chatError = errors.New("Произошла неизвестная ошибка")
 		}
+		for _, user := range chat.Users {
+			chatUser := ChatUser{
+				ChatID: chat.ID,
+				UserID: user.ID,
+			}
+			if err := db.Save(&chatUser).Error; err != nil {
+				chatError = errors.New("Произошла неизвестная ошибка")
+			}
+		}
 	})
 
 	return chat, chatError
@@ -65,18 +74,29 @@ func (srv *DbChatService) Update(chat *Chat) (*Chat, error) {
 	return chat, chatError
 }
 
-func (srv *DbChatService) Get(id int64, withMessages bool) (*Chat, error) {
-	var chat *Chat = nil
+func (srv *DbChatService) Get(id int64, include []string) (*Chat, error) {
+	var chat = new(Chat)
 	var chatError error = nil
 
 	srv.dbExec(func(db *gorm.DB) {
-		query := db.Preload("Users")
+		query := db.Order("updated_at desc")
 
-		if withMessages {
+		if Contains(include, "messages") {
 			query = query.Preload("Messages")
 		}
 		if err := query.First(chat, id).Error; err != nil {
 			chatError = errors.New("Невозможно получить чат")
+		}
+		if chatError == nil && Contains(include, "users") {
+			chatUsers := make([]ChatUser, 0)
+			chat.Users = make([]User, 0)
+
+			if err := db.Preload("User").Where(ChatUser{ChatID: chat.ID}).Find(&chatUsers).Error; err != nil {
+				return
+			}
+			for _, rel := range chatUsers {
+				chat.Users = append(chat.Users, rel.User)
+			}
 		}
 	})
 
@@ -88,20 +108,27 @@ func (srv *DbChatService) GetForUser(ownerID int64) ([]*Chat, error) {
 	var chatError error = nil
 
 	srv.dbExec(func(db *gorm.DB) {
-		if err := db.Preload("Users").Where(Chat{OwnerID: ownerID}).Find(chats).Error; err != nil {
+		db = db.Debug()
+		if err := db.Where(Chat{OwnerID: ownerID}).Find(&chats).Error; err != nil {
 			chatError = errors.New("Невозможно получить чат")
 		}
-	})
-	for _, chat := range chats {
-		if !chat.Personal {
-			continue
-		}
-		for _, user := range chat.Users {
-			if user.ID != userID {
-				chat.Name = user.Login
+		for _, chat := range chats {
+			if !chat.Personal {
+				continue
+			}
+
+			chatUsers := make([]ChatUser, 0)
+
+			if err := db.Preload("User").Where(ChatUser{ChatID: chat.ID}).Find(&chatUsers).Error; err != nil {
+				continue
+			}
+			for _, rel := range chatUsers {
+				if rel.User.ID != userID {
+					chat.Name = rel.User.Login
+				}
 			}
 		}
-	}
+	})
 
 	return chats, chatError
 }

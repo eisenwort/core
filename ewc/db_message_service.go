@@ -30,6 +30,7 @@ func (srv *DbMessageService) Create(msg *Message) (*Message, error) {
 
 	var msgError error = nil
 	msg.CreatedAt = time.Now()
+	//msg.Alghorithm = alghorinthm
 
 	srv.dbExec(func(db *gorm.DB) {
 		if err := db.Save(msg).Error; err != nil {
