@@ -2,7 +2,6 @@ package ewc
 
 import (
 	"log"
-	"os"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
@@ -27,7 +26,7 @@ func (srv *BaseDbService) dbExec(closure func(db *gorm.DB)) {
 }
 
 func (srv *BaseDbService) getDb() *gorm.DB {
-	if driver == "sqlite3" {
+	/*if driver == "sqlite3" {
 		if _, err := os.Stat(connectionString); os.IsNotExist(err) {
 			file, err := os.Create(connectionString)
 
@@ -40,7 +39,7 @@ func (srv *BaseDbService) getDb() *gorm.DB {
 				log.Println("close db file error:", err)
 			}
 		}
-	}
+	}*/
 
 	db, err := gorm.Open(driver, connectionString)
 
@@ -49,6 +48,5 @@ func (srv *BaseDbService) getDb() *gorm.DB {
 		return nil
 	}
 
-	db = db.Debug()
 	return db
 }

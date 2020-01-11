@@ -54,13 +54,13 @@ func (srv *ChatService) GetChats() {
 }
 
 func (srv *ChatService) Get(id int64, withMessages bool) {
-	chat, err := srv.dbService.Get(id, withMessages)
+	chat, err := srv.dbService.Get(id, []string{"messages"})
 
 	if err == nil {
 		srv.ChatChan <- chat
 	}
 
-	requestUrl := fmt.Sprintf("/chats/%d", id)
+	requestUrl := fmt.Sprintf("/chats/%d?include=messages", id)
 	srv.get(requestUrl, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка получения чата"
