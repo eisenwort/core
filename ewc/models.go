@@ -144,4 +144,5 @@ type SetupData struct {
 	DbPath           string
 	DbDriver         string
 	ConnectionString string
+	PageLimit        int
 }

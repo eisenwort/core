@@ -68,7 +68,7 @@ func (srv *MessageService) Delete(msg *Message) {
 	})
 }
 
-func (srv *MessageService) GetByChat(chatID int64) {
+func (srv *MessageService) GetByChat(chatID int64, page int) {
 	user := srv.dbUserService.Get(userID)
 
 	if user.Reseted {
@@ -76,7 +76,7 @@ func (srv *MessageService) GetByChat(chatID int64) {
 		return
 	}
 
-	messages := srv.dbService.GetByChat(chatID)
+	messages := srv.dbService.GetByChat(chatID, page)
 	col := NewMessageCollection()
 
 	if messages != nil {
@@ -104,6 +104,8 @@ func (srv *MessageService) listeners() {
 		select {
 		case _ = <-srv.api.RequestErrorChan:
 			srv.ErrorsChan <- "Ошибка подключения сети"
+		case msg := <-srv.dbService.ErrorsChan:
+			srv.ErrorsChan <- msg
 		}
 	}
 }

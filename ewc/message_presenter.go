@@ -32,11 +32,14 @@ func (pr *MessagePresenter) Delete(msg *Message) {
 	go pr.messageService.Delete(msg)
 }
 
-func (pr *MessagePresenter) GetByChat(chatID int64) {
+func (pr *MessagePresenter) GetByChat(chatID int64, page int) {
 	if chatID == 0 {
 		return
 	}
-	go pr.messageService.GetByChat(chatID)
+	if page <= 0 {
+		return
+	}
+	go pr.messageService.GetByChat(chatID, page)
 }
 
 func (pr *MessagePresenter) listeners() {

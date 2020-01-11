@@ -18,6 +18,7 @@ func Setup(data SetupData) {
 	}
 
 	driver = data.DbDriver
+	pageLimit = data.PageLimit
 }
 
 func getClaims(token string) JwtClaims {

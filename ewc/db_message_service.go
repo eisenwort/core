@@ -30,7 +30,6 @@ func (srv *DbMessageService) Create(msg *Message) (*Message, error) {
 
 	var msgError error = nil
 	msg.CreatedAt = time.Now()
-	msg.Alghorithm = alghorinthm
 
 	srv.dbExec(func(db *gorm.DB) {
 		if err := db.Save(msg).Error; err != nil {
@@ -48,7 +47,7 @@ func (srv *DbMessageService) Delete(msg *Message) bool {
 	result := true
 
 	srv.dbExec(func(db *gorm.DB) {
-		if err := db.Delete(Message{}, "id = ?", msg.ID).Error; err != nil {
+		if err := db.Where("id = ?", msg.ID).Delete(Message{}).Error; err != nil {
 			log.Println("delete message error:", err)
 			result = false
 		}
@@ -57,12 +56,18 @@ func (srv *DbMessageService) Delete(msg *Message) bool {
 	return result
 }
 
-// TODO: page
-func (srv *DbMessageService) GetByChat(chatID int64) []*Message {
+func (srv *DbMessageService) GetByChat(chatID int64, page int) []*Message {
 	result := make([]*Message, 0)
+	srv.updateChatChan <- chatID
 
 	srv.dbExec(func(db *gorm.DB) {
-		if err := db.Where(Message{ChatID: chatID}).Order("created_at desc").Find(&result).Error; err != nil {
+		query := db.Where(Message{ChatID: chatID}).Order("created_at desc")
+
+		if page != 0 {
+			offset := pageLimit * (page - 1)
+			query = query.Offset(offset).Limit(pageLimit)
+		}
+		if err := query.Find(&result).Error; err != nil {
 			log.Println("get message by chat error:", err)
 			result = nil
 		}
