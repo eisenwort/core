@@ -1,13 +1,25 @@
 package ewc
 
 import (
+	"encoding/json"
+	"io"
+	"io/ioutil"
 	"log"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 )
 
-func Setup(data SetupData) {
+type Util struct {
+}
+
+func NewUtil() *Util {
+	item := new(Util)
+
+	return item
+}
+
+func (u *Util) Setup(data *SetupData) {
 	if data.DbDriver == "sqlite3" {
 		if data.DbPath != "" && !strings.HasSuffix(data.DbPath, "/") {
 			data.DbPath += "/"
@@ -22,6 +34,17 @@ func Setup(data SetupData) {
 	}
 
 	driver = data.DbDriver
+	pageLimit = data.PageLimit
+}
+
+func (u *Util) CloseApp() {
+	db := getDb()
+
+	if err := db.Close(); err != nil {
+		log.Println("close db error:", err)
+	}
+
+	// encrypt DB
 }
 
 func Contains(arr []string, str string) bool {
@@ -44,4 +67,32 @@ func getClaims(token string) JwtClaims {
 	}
 
 	return claims
+}
+
+func serialize(item interface{}) string {
+	data, err := json.Marshal(item)
+
+	if err != nil {
+		log.Println("serialize object error:", err)
+		return "{}"
+	}
+
+	return string(data)
+}
+
+func deserialize(data string, item interface{}) {
+	if err := json.Unmarshal([]byte(data), item); err != nil {
+		log.Println("deserialize object error:", err)
+	}
+}
+
+func getBodyString(body io.Reader) string {
+	data, err := ioutil.ReadAll(body)
+
+	if err != nil {
+		log.Println("get http body error:", err)
+		return "{}"
+	}
+
+	return string(data)
 }

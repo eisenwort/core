@@ -29,6 +29,18 @@ func (pr *ChatListPresenter) CreatePersonalChat(login string) {
 	pr.chatService.CreatePersonalChat(login)
 }
 
+func (pr *ChatListPresenter) CreateChat(chat string, friendLogin string) {
+	if chat == "" || chat == "{}" {
+		return
+	}
+	if friendLogin == "" {
+		pr.chatService.ErrorsChan <- "Для создания диалога нужно выбрать собеседника"
+		return
+	}
+
+	go pr.chatService.Create(chat)
+}
+
 func (pr *ChatListPresenter) listeners() {
 	for {
 		select {

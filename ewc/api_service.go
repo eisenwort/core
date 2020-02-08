@@ -10,13 +10,11 @@ import (
 )
 
 type ApiService struct {
-	RequestErrorChan chan bool
-	client           http.Client
+	client http.Client
 }
 
 func NewApiService() *ApiService {
 	srv := new(ApiService)
-	srv.RequestErrorChan = make(chan bool, chanSize)
 	srv.client = http.Client{
 		Timeout: time.Second * 10,
 	}

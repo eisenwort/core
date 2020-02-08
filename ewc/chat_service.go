@@ -11,8 +11,9 @@ type ChatService struct {
 	ApiService
 	dbService      *DbChatService
 	dbUserService  *DbUserService
-	ChatChan       chan *Chat
-	ChatListChan   chan *ChatCollection
+	saveListChat   chan []Chat
+	ChatChan       chan string
+	ChatListChan   chan string
 	ChatDeleteChan chan bool
 	ChatCleanChan  chan bool
 }
@@ -21,43 +22,44 @@ func NewChatService() *ChatService {
 	srv := new(ChatService)
 	srv.dbService = NewDbChatService()
 	srv.dbUserService = NewDbUserService()
+	srv.saveListChat = make(chan []Chat, chanSize)
 	srv.ErrorsChan = make(chan string, chanSize)
 	srv.InfoChan = make(chan string, chanSize)
-	srv.ChatChan = make(chan *Chat, chanSize)
+	srv.ChatChan = make(chan string, chanSize)
 	srv.ChatDeleteChan = make(chan bool, chanSize)
 	srv.ChatCleanChan = make(chan bool, chanSize)
-	srv.ChatListChan = make(chan *ChatCollection, chanSize)
+	srv.ChatListChan = make(chan string, chanSize)
 
 	go srv.listeners()
 	return srv
 }
 
 func (srv *ChatService) GetChats() {
-	chatCollection := NewChatCollection()
 	chats, err := srv.dbService.GetForUser(userID)
 
 	if err == nil {
-		chatCollection.s = chats
-		srv.ChatListChan <- chatCollection
+		srv.ChatListChan <- serialize(chats)
 	}
 	srv.get("/chats", func(r *http.Response) {
-		chats := make([]*Chat, 0)
-
-		if err := json.NewDecoder(r.Body).Decode(&chats); err != nil {
+		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка получения чатов"
 			return
 		}
 
-		chatCollection.s = chats
-		srv.ChatListChan <- chatCollection
+		jsonData := getBodyString(r.Body)
+		srv.ChatListChan <- jsonData
+
+		var chats []Chat
+		deserialize(jsonData, &chats)
+		srv.saveListChat <- chats
 	})
 }
 
-func (srv *ChatService) Get(id int64, withMessages bool) {
+func (srv *ChatService) Get(id int64) {
 	chat, err := srv.dbService.Get(id, []string{"messages"})
 
 	if err == nil {
-		srv.ChatChan <- chat
+		srv.ChatChan <- serialize(chat)
 	}
 
 	requestUrl := fmt.Sprintf("/chats/%d?include=messages", id)
@@ -70,7 +72,7 @@ func (srv *ChatService) Get(id int64, withMessages bool) {
 			srv.ErrorsChan <- "Ошибка получения чата"
 			return
 		}
-		srv.ChatChan <- chat
+		srv.ChatChan <- serialize(chat)
 		srv.dbService.Update(chat)
 	})
 }
@@ -108,17 +110,30 @@ func (srv *ChatService) CreatePersonalChat(login string) {
 			srv.ErrorsChan <- "Ошибка создания чата"
 			return
 		}
-		if err := json.NewDecoder(r.Body).Decode(chat); err != nil {
+
+		data := getBodyString(r.Body)
+		chat := Chat{}
+
+		if err := json.Unmarshal([]byte(data), &chat); err != nil {
 			srv.ErrorsChan <- "Ошибка создания чата"
 			return
 		}
 
-		srv.ChatChan <- chat
+		srv.ChatChan <- data
 		srv.dbService.Create(chat)
 	})
 }
 
-func (srv *ChatService) Create(chat *Chat) {
+func (srv *ChatService) Create(chatJson string) {
+	chat := Chat{}
+
+	if err := json.Unmarshal([]byte(chatJson), &chat); err != nil {
+		srv.ErrorsChan <- "Ошибка создания чата"
+		return
+	}
+
+	chat.OwnerID = userID
+	chat.Personal = true
 	self := srv.dbUserService.Get(userID)
 
 	if self.Reseted {
@@ -154,12 +169,8 @@ func (srv *ChatService) Create(chat *Chat) {
 			srv.ErrorsChan <- "Ошибка создания чата"
 			return
 		}
-		if err := json.NewDecoder(r.Body).Decode(chat); err != nil {
-			srv.ErrorsChan <- "Ошибка создания чата"
-			return
-		}
 
-		srv.ChatChan <- chat
+		srv.ChatChan <- getBodyString(r.Body)
 		srv.dbService.Create(chat)
 	})
 }
@@ -213,5 +224,10 @@ func (srv *ChatService) Clean(chat *Chat) {
 }
 
 func (srv *ChatService) listeners() {
-
+	for {
+		select {
+		case chats := <-srv.saveListChat:
+			srv.dbService.SaveList(chats)
+		}
+	}
 }

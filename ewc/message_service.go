@@ -1,7 +1,6 @@
 package ewc
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -11,8 +10,11 @@ type MessageService struct {
 	api               *ApiService
 	dbService         *DbMessageService
 	dbUserService     *DbUserService
-	MessageListChan   chan *MessageCollection
-	MessageChan       chan *Message
+	saveChan          chan Message
+	saveListChan      chan []Message
+	MessageListChan   chan string
+	MessageChan       chan string
+	IdChan            chan int64
 	MessageDeleteChan chan int64
 }
 
@@ -21,17 +23,20 @@ func NewMessageService() *MessageService {
 	srv.api = NewApiService()
 	srv.dbService = NewDbMessageService()
 	srv.dbUserService = NewDbUserService()
+	srv.saveChan = make(chan Message, chanSize)
+	srv.saveListChan = make(chan []Message, chanSize)
 	srv.ErrorsChan = make(chan string, chanSize)
 	srv.InfoChan = make(chan string, chanSize)
-	srv.MessageChan = make(chan *Message, chanSize)
-	srv.MessageListChan = make(chan *MessageCollection, chanSize)
+	srv.MessageChan = make(chan string, chanSize)
+	srv.MessageListChan = make(chan string, chanSize)
 	srv.MessageDeleteChan = make(chan int64, chanSize)
+	srv.IdChan = make(chan int64, chanSize)
 
 	go srv.listeners()
 	return srv
 }
 
-func (srv *MessageService) Send(msg *Message, text string) {
+func (srv *MessageService) Send(jsonData string, text string) {
 	user := srv.dbUserService.Get(userID)
 
 	if user.Reseted {
@@ -39,21 +44,24 @@ func (srv *MessageService) Send(msg *Message, text string) {
 		return
 	}
 
+	msg := Message{}
+	deserialize(jsonData, &msg)
+
 	srv.api.post("/messages", msg, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка отправки сообщения"
 			return
 		}
-		if err := json.NewDecoder(r.Body).Decode(msg); err != nil {
-			srv.ErrorsChan <- "Ошибка отправки сообщения"
-			return
-		}
-		srv.MessageChan <- msg
-		srv.dbService.Create(msg)
+
+		jsonData := getBodyString(r.Body)
+		srv.MessageChan <- jsonData
+
+		deserialize(jsonData, &msg)
+		srv.saveChan <- msg
 	})
 }
 
-func (srv *MessageService) Delete(msg *Message) {
+func (srv *MessageService) Delete(msg Message) {
 	id := msg.ID
 	requestUrl := fmt.Sprintf("/messages/%d", msg.ID)
 
@@ -68,7 +76,7 @@ func (srv *MessageService) Delete(msg *Message) {
 	})
 }
 
-func (srv *MessageService) GetByChat(chatID int64) {
+func (srv *MessageService) GetByChat(chatID int64, page int) {
 	user := srv.dbUserService.Get(userID)
 
 	if user.Reseted {
@@ -76,12 +84,10 @@ func (srv *MessageService) GetByChat(chatID int64) {
 		return
 	}
 
-	messages := srv.dbService.GetByChat(chatID)
-	col := NewMessageCollection()
+	messages := srv.dbService.GetByChat(chatID, page)
 
 	if messages != nil {
-		col.s = messages
-		srv.MessageListChan <- col
+		srv.MessageListChan <- serialize(messages)
 	}
 
 	requestUrl := fmt.Sprintf("/chats/%d/messages", chatID)
@@ -90,20 +96,24 @@ func (srv *MessageService) GetByChat(chatID int64) {
 			srv.ErrorsChan <- "Ошибка олучения сообщений"
 			return
 		}
-		if err := json.NewDecoder(r.Body).Decode(&messages); err != nil {
-			srv.ErrorsChan <- "Ошибка олучения сообщений"
-			return
-		}
-		col.s = messages
-		srv.MessageListChan <- col
+
+		jsonData := getBodyString(r.Body)
+		srv.MessageListChan <- jsonData
+
+		deserialize(jsonData, &messages)
+		srv.saveListChan <- messages
 	})
 }
 
 func (srv *MessageService) listeners() {
 	for {
 		select {
-		case _ = <-srv.api.RequestErrorChan:
-			srv.ErrorsChan <- "Ошибка подключения сети"
+		case messages := <-srv.saveListChan:
+			for _, message := range messages {
+				srv.dbService.Save(message)
+			}
+		case msg := <-srv.saveChan:
+			srv.dbService.Save(msg)
 		}
 	}
 }

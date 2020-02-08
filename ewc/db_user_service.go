@@ -5,17 +5,17 @@ import (
 	"log"
 
 	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type DbUserService struct {
-	BaseDbService
 }
 
 func NewDbUserService() *DbUserService {
 	srv := new(DbUserService)
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		db.AutoMigrate(&User{})
 		db.AutoMigrate(&UserData{})
 		db.AutoMigrate(&Friend{})
@@ -24,21 +24,23 @@ func NewDbUserService() *DbUserService {
 	return srv
 }
 
-func (srv *DbUserService) Create(login, password string) (*User, error) {
+func (srv *DbUserService) Create(login, password, passwordForReset string) (*User, error) {
 	existingUser := new(User)
 	var user = new(User)
 	var userError error = nil
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.Where(User{Login: login}).First(existingUser); err == nil {
 			userError = errors.New("Логин уже занят")
 			return
 		}
 
 		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		hashedResetPassword, _ := bcrypt.GenerateFromPassword([]byte(passwordForReset), bcrypt.DefaultCost)
 		user := &User{
-			Login:    login,
-			Password: string(hashedPassword),
+			Login:         login,
+			Password:      string(hashedPassword),
+			ResetPassword: string(hashedResetPassword),
 		}
 		if err := db.Save(user).Error; err != nil {
 			log.Println("create user error:", err)
@@ -51,7 +53,7 @@ func (srv *DbUserService) Create(login, password string) (*User, error) {
 }
 
 func (srv *DbUserService) Update(user *User) *User {
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.Save(user).Error; err != nil {
 			log.Println("update user error:", err)
 		}
@@ -61,7 +63,7 @@ func (srv *DbUserService) Update(user *User) *User {
 }
 
 func (srv *DbUserService) Save(user *User) *User {
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.Save(user).Error; err != nil {
 			log.Println("save user error:", err)
 		}
@@ -71,7 +73,7 @@ func (srv *DbUserService) Save(user *User) *User {
 }
 
 func (srv *DbUserService) SaveUserData(data UserData) {
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		db.Delete(&UserData{})
 
 		if err := db.Save(&data).Error; err != nil {
@@ -81,7 +83,7 @@ func (srv *DbUserService) SaveUserData(data UserData) {
 }
 
 func (srv *DbUserService) Migrate() {
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		db.AutoMigrate(User{})
 		db.AutoMigrate(UserData{})
 		db.AutoMigrate(Friend{})
@@ -91,7 +93,7 @@ func (srv *DbUserService) Migrate() {
 func (srv *DbUserService) Login(login, password string) *User {
 	user := new(User)
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.Where(User{Login: login}).First(&user).Error; err != nil {
 			log.Println("get user error:", err)
 		}
@@ -101,7 +103,7 @@ func (srv *DbUserService) Login(login, password string) *User {
 		return user
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.ResetPassword), []byte(password)); err == nil {
-		srv.dbExec(func(db *gorm.DB) {
+		dbExec(func(db *gorm.DB) {
 			db.Delete(&Message{}, "user_id = ?", user.ID)
 			db.Delete(&ChatUser{}, "user_id = ?", user.ID)
 			db.Delete(&Chat{}, "owner_id = ?", user.ID)
@@ -117,11 +119,11 @@ func (srv *DbUserService) Login(login, password string) *User {
 	return nil
 }
 
-func (srv *DbUserService) IsLogin() *User {
-	var user *User = nil
+func (srv *DbUserService) IsLogin() User {
+	user := User{}
 
-	srv.dbExec(func(db *gorm.DB) {
-		db.Model(&User{}).First(user)
+	dbExec(func(db *gorm.DB) {
+		db.Model(User{}).First(&user)
 	})
 
 	return user
@@ -130,7 +132,7 @@ func (srv *DbUserService) IsLogin() *User {
 func (srv *DbUserService) GetFriends(userID int64) []*User {
 	users := make([]*User, 0)
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		db.Model(User{}).
 			Where("id in (select friend_id from friends where user_id = ?)", userID).
 			Find(&users)
@@ -142,7 +144,7 @@ func (srv *DbUserService) GetFriends(userID int64) []*User {
 func (srv *DbUserService) Get(id int64) *User {
 	user := new(User)
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.First(user, id).Error; err != nil {
 			user = nil
 		}
@@ -154,7 +156,7 @@ func (srv *DbUserService) Get(id int64) *User {
 func (srv *DbUserService) GetUserData() UserData {
 	userData := UserData{}
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		db.First(&userData)
 	})
 
@@ -164,7 +166,7 @@ func (srv *DbUserService) GetUserData() UserData {
 func (srv *DbUserService) GetByLogin(login string) *User {
 	user := new(User)
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.Where(&User{Login: login}).First(user).Error; err != nil {
 			user = nil
 		}
@@ -176,7 +178,7 @@ func (srv *DbUserService) GetByLogin(login string) *User {
 func (srv *DbUserService) Search(searchString string) []*User {
 	users := make([]*User, 0)
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		db.Where("login ilike ?", searchString).Find(&users)
 	})
 
@@ -186,7 +188,7 @@ func (srv *DbUserService) Search(searchString string) []*User {
 func (srv *DbUserService) AddFriend(userID int64, friendID int64) *User {
 	user := new(User)
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		friendItem := Friend{
 			UserID:   userID,
 			FriendID: friendID,
@@ -208,7 +210,7 @@ func (srv *DbUserService) AddFriend(userID int64, friendID int64) *User {
 func (srv *DbUserService) DeleteFriend(userID int64, friendID int64) bool {
 	success := true
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.Where(Friend{UserID: userID, FriendID: friendID}).Delete(Friend{}).Error; err != nil {
 			log.Printf("delete friend %d for user %d, error: %s", friendID, userID, err.Error())
 			success = false
@@ -219,7 +221,7 @@ func (srv *DbUserService) DeleteFriend(userID int64, friendID int64) bool {
 }
 
 func (srv *DbUserService) Delete(id int64) {
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.Delete(Chat{}, "owner_id = ?", id).Error; err != nil {
 			log.Println("delete user chats error:", err)
 		}

@@ -9,13 +9,12 @@ import (
 )
 
 type DbChatService struct {
-	BaseDbService
 }
 
 func NewDbChatService() *DbChatService {
 	srv := new(DbChatService)
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		db.AutoMigrate(&Chat{})
 		db.AutoMigrate(&ChatUser{})
 	})
@@ -23,15 +22,15 @@ func NewDbChatService() *DbChatService {
 	return srv
 }
 
-func (srv *DbChatService) Create(chat *Chat) (*Chat, error) {
+func (srv *DbChatService) Create(chat Chat) (Chat, error) {
 	existingChat := Chat{}
 	var chatError error = nil
 	chat.CreatedAt = time.Now()
 
-	srv.dbExec(func(db *gorm.DB) {
-		user := &User{}
+	dbExec(func(db *gorm.DB) {
+		user := User{}
 
-		if err := db.First(user, chat.OwnerID).Error; err != nil {
+		if err := db.Where(User{ID: chat.OwnerID}).First(&user).Error; err != nil {
 			chatError = errors.New("Произошла неизвестная ошибка")
 			return
 		}
@@ -40,7 +39,7 @@ func (srv *DbChatService) Create(chat *Chat) (*Chat, error) {
 			return
 		}
 		if err := db.Where(Chat{Name: chat.Name, OwnerID: chat.OwnerID}).First(&existingChat); err == nil {
-			chat = &existingChat
+			chat = existingChat
 			return
 		}
 		if err := db.Save(&chat).Error; err != nil {
@@ -60,13 +59,13 @@ func (srv *DbChatService) Create(chat *Chat) (*Chat, error) {
 	return chat, chatError
 }
 
-func (srv *DbChatService) Update(chat *Chat) (*Chat, error) {
+func (srv *DbChatService) Update(chat Chat) (Chat, error) {
 	var chatError error = nil
 	chat.UpdatedAt = time.Now()
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.Save(chat).Error; err != nil {
-			log.Println("update user error:", err)
+			log.Println("update chat error:", err)
 			chatError = errors.New("не удалось обновить чат")
 		}
 	})
@@ -74,17 +73,17 @@ func (srv *DbChatService) Update(chat *Chat) (*Chat, error) {
 	return chat, chatError
 }
 
-func (srv *DbChatService) Get(id int64, include []string) (*Chat, error) {
-	var chat = new(Chat)
+func (srv *DbChatService) Get(id int64, include []string) (Chat, error) {
+	var chat = Chat{}
 	var chatError error = nil
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		query := db.Order("updated_at desc")
 
 		if Contains(include, "messages") {
 			query = query.Preload("Messages")
 		}
-		if err := query.First(chat, id).Error; err != nil {
+		if err := query.Where(Chat{ID: id}).First(&chat).Error; err != nil {
 			chatError = errors.New("Невозможно получить чат")
 		}
 		if chatError == nil && Contains(include, "users") {
@@ -103,16 +102,20 @@ func (srv *DbChatService) Get(id int64, include []string) (*Chat, error) {
 	return chat, chatError
 }
 
-func (srv *DbChatService) GetForUser(ownerID int64) ([]*Chat, error) {
-	var chats = make([]*Chat, 0)
+func (srv *DbChatService) GetForUser(ownerID int64) ([]Chat, error) {
+	var chats = make([]Chat, 0)
 	var chatError error = nil
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		db = db.Debug()
 		if err := db.Where(Chat{OwnerID: ownerID}).Find(&chats).Error; err != nil {
 			chatError = errors.New("Невозможно получить чат")
 		}
 		for _, chat := range chats {
+			msg := Message{}
+			db.Select("text").Where(Message{ChatID: chat.ID}).Last(&msg)
+			chat.LastMessage = msg.Text
+
 			if !chat.Personal {
 				continue
 			}
@@ -134,7 +137,7 @@ func (srv *DbChatService) GetForUser(ownerID int64) ([]*Chat, error) {
 }
 
 func (srv *DbChatService) Delete(chat *Chat) {
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.Delete(Chat{}, "id = ?", chat.ID).Error; err != nil {
 			log.Println("delete chat error:", err)
 		}
@@ -148,7 +151,7 @@ func (srv *DbChatService) Delete(chat *Chat) {
 }
 
 func (srv *DbChatService) Exit(chat *Chat) {
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.Delete(ChatUser{}, "chat_id = ? and user_id = ?", chat.ID, userID).Error; err != nil {
 			log.Println("delete chat users error:", err)
 		}
@@ -161,7 +164,7 @@ func (srv *DbChatService) Exit(chat *Chat) {
 func (srv *DbChatService) Clean(chat *Chat) bool {
 	result := true
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.Where(&Message{ChatID: chat.ID}).Delete(Message{}).Error; err != nil {
 			log.Println("clean chat error:", err)
 			result = false
@@ -169,4 +172,24 @@ func (srv *DbChatService) Clean(chat *Chat) bool {
 	})
 
 	return result
+}
+
+func (srv *DbChatService) Save(chat Chat) Chat {
+	dbExec(func(db *gorm.DB) {
+		if err := db.Save(chat).Error; err != nil {
+			log.Println("save chat error:", err)
+		}
+	})
+
+	return chat
+}
+
+func (srv *DbChatService) SaveList(chats []Chat) {
+	dbExec(func(db *gorm.DB) {
+		for _, chat := range chats {
+			if err := db.Save(chat).Error; err != nil {
+				log.Println("save chat error:", err)
+			}
+		}
+	})
 }

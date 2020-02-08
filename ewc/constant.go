@@ -25,3 +25,4 @@ var userIDHeader = ""
 var connectionString = ""
 var jwtToken = ""
 var driver = ""
+var pageLimit = 0
