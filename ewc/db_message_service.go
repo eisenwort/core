@@ -9,7 +9,6 @@ import (
 )
 
 type DbMessageService struct {
-	BaseDbService
 	updateChatChan chan int64
 }
 
@@ -17,7 +16,7 @@ func NewDbMessageService() *DbMessageService {
 	srv := new(DbMessageService)
 	srv.updateChatChan = make(chan int64, chanSize)
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		db.AutoMigrate(&Message{})
 	})
 
@@ -25,29 +24,36 @@ func NewDbMessageService() *DbMessageService {
 	return srv
 }
 
-func (srv *DbMessageService) Create(msg *Message) (*Message, error) {
+func (srv *DbMessageService) Create(msg Message) (Message, error) {
 	srv.updateChatChan <- msg.ChatID
 
 	var msgError error = nil
 	msg.CreatedAt = time.Now()
 	//msg.Alghorithm = alghorinthm
 
-	srv.dbExec(func(db *gorm.DB) {
-		if err := db.Save(msg).Error; err != nil {
+	dbExec(func(db *gorm.DB) {
+		if err := db.Save(&msg).Error; err != nil {
 			msgError = errors.New("Ошибка отправки сообщения")
 			log.Println("create message error:", err)
-			msg = nil
 		}
 	})
 
 	return msg, msgError
 }
 
-func (srv *DbMessageService) Delete(msg *Message) bool {
+func (srv *DbMessageService) Save(msg Message) {
+	dbExec(func(db *gorm.DB) {
+		if err := db.Save(&msg).Error; err != nil {
+			log.Println("create message error:", err)
+		}
+	})
+}
+
+func (srv *DbMessageService) Delete(msg Message) bool {
 	srv.updateChatChan <- msg.ChatID
 	result := true
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		if err := db.Where("id = ?", msg.ID).Delete(Message{}).Error; err != nil {
 			log.Println("delete message error:", err)
 			result = false
@@ -57,11 +63,11 @@ func (srv *DbMessageService) Delete(msg *Message) bool {
 	return result
 }
 
-func (srv *DbMessageService) GetByChat(chatID int64, page int) []*Message {
-	result := make([]*Message, 0)
+func (srv *DbMessageService) GetByChat(chatID int64, page int) []Message {
+	result := make([]Message, 0)
 	srv.updateChatChan <- chatID
 
-	srv.dbExec(func(db *gorm.DB) {
+	dbExec(func(db *gorm.DB) {
 		query := db.Where(Message{ChatID: chatID}).Order("created_at desc")
 
 		if page != 0 {
@@ -81,7 +87,7 @@ func (srv *DbMessageService) listeners() {
 	for {
 		select {
 		case id := <-srv.updateChatChan:
-			srv.dbExec(func(db *gorm.DB) {
+			dbExec(func(db *gorm.DB) {
 				db.Raw("update chat updated_at=now() where chat_id = ?", id)
 			})
 		}

@@ -28,19 +28,17 @@ func (pr *LoginPresenter) IsLogin() {
 	go pr.userService.IsLogin()
 }
 
-func (pr *LoginPresenter) Register(login, password string) {
+func (pr *LoginPresenter) Register(login, password, passwordForReset string) {
 	if login == "" || password == "" {
 		pr.errorsChan <- "Логин и пароль обязательны"
 		return
 	}
-	go pr.userService.Register(login, password)
+	go pr.userService.Register(login, password, passwordForReset)
 }
 
 func (pr *LoginPresenter) listeners() {
 	for {
 		select {
-		case user := <-pr.userService.UserChan:
-			pr.view.DidGetUser(user)
 		case errorString := <-pr.userService.ErrorsChan:
 			pr.view.ShowError(errorString)
 		case errorString := <-pr.errorsChan:

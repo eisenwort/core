@@ -2,11 +2,11 @@ package ewc
 
 type MessagePresenter struct {
 	BasePresenter
-	view           ChatView
+	view           MessageView
 	messageService *MessageService
 }
 
-func NewMessagePresenter(view ChatView) *MessagePresenter {
+func NewMessagePresenter(view MessageView) *MessagePresenter {
 	pr := new(MessagePresenter)
 	pr.view = view
 	pr.messageService = NewMessageService()
@@ -17,14 +17,18 @@ func NewMessagePresenter(view ChatView) *MessagePresenter {
 	return pr
 }
 
-func (pr *MessagePresenter) Send(msg *Message, text string) {
+func (pr *MessagePresenter) Send(msg string, text string) {
 	if text == "" {
+		pr.errorsChan <- "Невозможно отправить пустое сообщение"
 		return
 	}
 	go pr.messageService.Send(msg, text)
 }
 
-func (pr *MessagePresenter) Delete(msg *Message) {
+func (pr *MessagePresenter) Delete(jsonData string) {
+	msg := Message{}
+	deserialize(jsonData, &msg)
+
 	if msg.UserID != userID {
 		pr.errorsChan <- "Невозможно удалить чужое сообщение"
 		return

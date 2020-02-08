@@ -15,7 +15,6 @@ type UserService struct {
 	saveChan   chan User
 	getChan    chan int64
 	dbService  *DbUserService
-	UserChan   chan *User
 	ErrorsChan chan string
 	LoginChan  chan bool
 }
@@ -26,26 +25,26 @@ func NewUserService() *UserService {
 	srv.saveChan = make(chan User, chanSize)
 	srv.getChan = make(chan int64, 1)
 	srv.ErrorsChan = make(chan string, chanSize)
-	srv.UserChan = make(chan *User, chanSize)
 	srv.LoginChan = make(chan bool, chanSize)
 
 	go srv.listeners()
 	return srv
 }
 
-func (srv *UserService) Register(login, password string) {
+func (srv *UserService) Register(login, password, passwordForReset string) {
 	tokenData := TokenData{}
 	data := map[string]string{
-		"login":    login,
-		"password": password,
+		"login":          login,
+		"password":       password,
+		"reset_password": passwordForReset,
 	}
 
-	srv.post("/users", data, func(r *http.Response) {
+	srv.post("/registration", data, func(r *http.Response) {
 		if r.StatusCode == http.StatusConflict {
 			srv.ErrorsChan <- "Логин уже занят"
 			return
 		}
-		if r.StatusCode != http.StatusOK {
+		if r.StatusCode != http.StatusCreated {
 			srv.ErrorsChan <- "Ошибка регистрации"
 			return
 		}
@@ -73,7 +72,7 @@ func (srv *UserService) Register(login, password string) {
 func (srv *UserService) IsLogin() {
 	user := srv.dbService.IsLogin()
 
-	if user == nil {
+	if user.ID == 0 {
 		srv.LoginChan <- false
 		return
 	}
@@ -119,11 +118,11 @@ func (srv *UserService) Update(item *User) {
 			return
 		}
 		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-			srv.UserChan <- nil
+			// srv.UserChan <- nil
+			srv.ErrorsChan <- "Ошибка обновления"
 			return
 		}
 		srv.saveChan <- user
-		srv.UserChan <- &user
 	})
 }
 
@@ -145,7 +144,7 @@ func (srv *UserService) Login(login, password string) {
 		}
 	})
 	if tokenData.Token == "" {
-		srv.LoginChan <- false
+		srv.ErrorsChan <- "Неверный логин или пароль"
 		return
 	}
 

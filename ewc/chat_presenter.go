@@ -2,9 +2,8 @@ package ewc
 
 type ChatPresenter struct {
 	BasePresenter
-	view           ChatView
-	chatService    *ChatService
-	messageService *MessageService
+	view        ChatView
+	chatService *ChatService
 }
 
 func NewChatPresenter(view ChatView) *ChatPresenter {
@@ -12,27 +11,12 @@ func NewChatPresenter(view ChatView) *ChatPresenter {
 	pr.view = view
 	pr.errorsChan = make(chan string, chanSize)
 	pr.chatService = NewChatService()
-	pr.messageService = NewMessageService()
 
 	go pr.listeners()
 	return pr
 }
 
-func (pr *ChatPresenter) CreateChat(chat *Chat, friendLogin string) {
-	if chat == nil {
-		return
-	}
-	if friendLogin == "" {
-		pr.chatService.ErrorsChan <- "Для созлания диалога нужно выбрать собеседника"
-		return
-	}
-
-	chat.OwnerID = userID
-	chat.Personal = true
-	go pr.chatService.Create(chat)
-}
-
-func (pr *ChatPresenter) CreateGroup(chat *Chat) {
+/*func (pr *ChatPresenter) CreateGroup(chat *Chat) {
 	if chat == nil {
 		return
 	}
@@ -47,7 +31,7 @@ func (pr *ChatPresenter) CreateGroup(chat *Chat) {
 
 	chat.OwnerID = userID
 	go pr.chatService.Create(chat)
-}
+}*/
 
 func (pr *ChatPresenter) Delete(chat *Chat) {
 	if chat == nil {
@@ -71,11 +55,15 @@ func (pr *ChatPresenter) Exit(chat *Chat) {
 	}
 }
 
-func (pr *ChatPresenter) Get(id int64, withMessages bool) {
+func (pr *ChatPresenter) Get(id int64) {
 	if id <= 0 {
 		return
 	}
-	go pr.chatService.Get(id, withMessages)
+	go pr.chatService.Get(id)
+}
+
+func (pr *ChatPresenter) GetList() {
+	go pr.chatService.GetChats()
 }
 
 func (pr *ChatPresenter) Clean(chat *Chat) {
@@ -100,10 +88,8 @@ func (pr *ChatPresenter) listeners() {
 			pr.view.DidDeleteChan(success)
 		case success := <-pr.chatService.ChatCleanChan:
 			pr.view.DidClean(success)
-		case message := <-pr.messageService.MessageChan:
-			pr.view.DidGetMessage(message)
-		case messageList := <-pr.messageService.MessageListChan:
-			pr.view.DidGetMessageList(messageList)
+		case chats := <-pr.chatService.ChatListChan:
+			pr.view.DidGetChats(chats)
 		}
 	}
 }
