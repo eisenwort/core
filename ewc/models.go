@@ -85,7 +85,7 @@ type Chat struct {
 	ID             int64     `gorm:"primary_key" json:"id,omitempty"`
 	OwnerID        int64     `gorm:"column:owner_id" json:"owner_id,omitempty"`
 	UnreadMessages int       `gorm:"column:unread_messages" json:"unread_messages,omitempty"`
-	Name           string    `gorm:"column:user_id" json:"name,omitempty"`
+	Name           string    `gorm:"column:name" json:"name,omitempty"`
 	Personal       bool      `gorm:"column:personal" json:"personal,omitempty"`
 	CreatedAt      time.Time `gorm:"column:created_at"`
 	UpdatedAt      time.Time `gorm:"column:updated_at"`
@@ -102,7 +102,7 @@ func (v *Chat) Equal(rhs *Chat) bool {
 }
 
 type ChatUser struct {
-	ID     int64 `gorm:"primary_key" json:"id,omitempty"`
+	ID     int64 `gorm:"primary_key"`
 	ChatID int64 `gorm:"column:chat_id"`
 	UserID int64 `gorm:"column:user_id"`
 	Chat   Chat
@@ -135,6 +135,10 @@ type EncryptData struct {
 type JwtClaims struct {
 	*jwt.MapClaims
 	Id int64
+}
+
+func (JwtClaims) Valid() error {
+	return nil
 }
 
 type TokenData struct {

@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
@@ -26,21 +27,6 @@ func (srv *BaseDbService) dbExec(closure func(db *gorm.DB)) {
 }
 
 func (srv *BaseDbService) getDb() *gorm.DB {
-	/*if driver == "sqlite3" {
-		if _, err := os.Stat(connectionString); os.IsNotExist(err) {
-			file, err := os.Create(connectionString)
-
-			if err != nil {
-				log.Println("create db file error:", err)
-				log.Println(connectionString)
-				return nil
-			}
-			if err := file.Close(); err != nil {
-				log.Println("close db file error:", err)
-			}
-		}
-	}*/
-
 	db, err := gorm.Open(driver, connectionString)
 
 	if err != nil {
