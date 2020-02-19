@@ -44,6 +44,7 @@ func (pr *MessagePresenter) GetByChat(chatID int64, page int) {
 		return
 	}
 	go pr.messageService.GetByChat(chatID, page)
+	go pr.messageService.SetAllIsRead(chatID)
 }
 
 func (pr *MessagePresenter) listeners() {

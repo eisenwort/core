@@ -29,7 +29,7 @@ func (srv *DbMessageService) Create(msg Message) (Message, error) {
 
 	var msgError error = nil
 	msg.CreatedAt = time.Now()
-	//msg.Alghorithm = alghorinthm
+	//msg.Algorithm = alghorinthm
 
 	dbExec(func(db *gorm.DB) {
 		if err := db.Save(&msg).Error; err != nil {
@@ -81,6 +81,12 @@ func (srv *DbMessageService) GetByChat(chatID int64, page int) []Message {
 	})
 
 	return result
+}
+
+func (srv *DbMessageService) SetAllIsRead(chatID int64) {
+	dbExec(func(db *gorm.DB) {
+		//query := ``
+	})
 }
 
 func (srv *DbMessageService) listeners() {

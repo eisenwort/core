@@ -107,8 +107,7 @@ func (srv *DbChatService) GetForUser(ownerID int64) ([]Chat, error) {
 	var chatError error = nil
 
 	dbExec(func(db *gorm.DB) {
-		db = db.Debug()
-		if err := db.Where(Chat{OwnerID: ownerID}).Find(&chats).Error; err != nil {
+		if err := db.Where(Chat{OwnerID: ownerID}).Find(&chats).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			chatError = errors.New("Невозможно получить чат")
 		}
 		for _, chat := range chats {
@@ -117,6 +116,9 @@ func (srv *DbChatService) GetForUser(ownerID int64) ([]Chat, error) {
 			chat.LastMessage = msg.Text
 
 			if !chat.Personal {
+				continue
+			}
+			if chat.Name != "" {
 				continue
 			}
 

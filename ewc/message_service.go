@@ -105,6 +105,10 @@ func (srv *MessageService) GetByChat(chatID int64, page int) {
 	})
 }
 
+func (srv *MessageService) SetAllIsRead(chatID int64) {
+	srv.dbService.SetAllIsRead(chatID)
+}
+
 func (srv *MessageService) listeners() {
 	for {
 		select {

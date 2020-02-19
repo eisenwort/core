@@ -66,6 +66,10 @@ func (pr *ChatPresenter) GetList() {
 	go pr.chatService.GetChats()
 }
 
+func (pr *ChatPresenter) Create(userLogin string) {
+	go pr.chatService.Create(userLogin)
+}
+
 func (pr *ChatPresenter) Clean(chat *Chat) {
 	if chat == nil {
 		return
