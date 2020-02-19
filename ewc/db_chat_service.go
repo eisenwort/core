@@ -107,28 +107,28 @@ func (srv *DbChatService) GetForUser(ownerID int64) ([]Chat, error) {
 	var chatError error = nil
 
 	dbExec(func(db *gorm.DB) {
-		db = db.Debug()
 		if err := db.Where(Chat{OwnerID: ownerID}).Find(&chats).Error; err != nil {
 			chatError = errors.New("Невозможно получить чат")
 		}
-		for _, chat := range chats {
+		for i := 0; i < len(chats); i++ {
 			msg := Message{}
-			db.Select("text").Where(Message{ChatID: chat.ID}).Last(&msg)
-			chat.LastMessage = msg.Text
+			db.Select("text").Where(Message{ChatID: chats[i].ID}).Last(&msg)
+			chats[i].LastMessage = msg.Text
 
-			if !chat.Personal {
+			if !chats[i].Personal {
+				continue
+			}
+			if chats[i].Name != "" {
 				continue
 			}
 
 			chatUsers := make([]ChatUser, 0)
 
-			if err := db.Preload("User").Where(ChatUser{ChatID: chat.ID}).Find(&chatUsers).Error; err != nil {
+			if err := db.Preload("User").Where(ChatUser{ChatID: chats[i].ID}).Where("user_id != ?", ownerID).Find(&chatUsers).Error; err != nil {
 				continue
 			}
-			for _, rel := range chatUsers {
-				if rel.User.ID != userID {
-					chat.Name = rel.User.Login
-				}
+			if len(chatUsers) != 0 {
+				chats[i].Name = chatUsers[0].User.Login
 			}
 		}
 	})
