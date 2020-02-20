@@ -81,7 +81,7 @@ func (srv *ChatService) CreatePersonalChat(login string) {
 	self := srv.dbUserService.Get(userID)
 	user := User{}
 
-	if self.Reseted {
+	if self.ID == 0 || self.Reseted {
 		srv.ErrorsChan <- "Ошибка создания чата"
 		return
 	}
@@ -99,7 +99,7 @@ func (srv *ChatService) CreatePersonalChat(login string) {
 	}
 
 	chat := Chat{
-		Users:    []User{user},
+		Users:    []User{self, user},
 		OwnerID:  userID,
 		Personal: true,
 	}
@@ -114,6 +114,9 @@ func (srv *ChatService) CreatePersonalChat(login string) {
 		if err := json.Unmarshal([]byte(data), &chat); err != nil {
 			srv.ErrorsChan <- "Ошибка создания чата"
 			return
+		}
+		if chat.Name == "" && chat.Personal {
+			chat.Name = login
 		}
 
 		srv.ChatChan <- data

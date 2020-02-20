@@ -30,3 +30,10 @@ type MessageView interface {
 	DidGetMessage(messages string)
 	DidDeleteMessage(id int64)
 }
+
+type ContactsView interface {
+	View
+	DidGetUserList(users string)
+	DidGetUser(user string)
+	DidDeleteUser(id int64)
+}
