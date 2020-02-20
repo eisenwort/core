@@ -12,11 +12,14 @@ import (
 
 type UserService struct {
 	ApiService
-	saveChan   chan User
-	getChan    chan int64
-	dbService  *DbUserService
-	ErrorsChan chan string
-	LoginChan  chan bool
+	saveChan     chan User
+	getChan      chan int64
+	dbService    *DbUserService
+	ErrorsChan   chan string
+	LoginChan    chan bool
+	UserListChan chan string
+	UserChan     chan string
+	DeleteChan   chan int64
 }
 
 func NewUserService() *UserService {
@@ -26,6 +29,9 @@ func NewUserService() *UserService {
 	srv.getChan = make(chan int64, 1)
 	srv.ErrorsChan = make(chan string, chanSize)
 	srv.LoginChan = make(chan bool, chanSize)
+	srv.UserListChan = make(chan string, chanSize)
+	srv.UserChan = make(chan string, chanSize)
+	srv.DeleteChan = make(chan int64, chanSize)
 
 	go srv.listeners()
 	return srv
@@ -173,6 +179,60 @@ func (srv *UserService) getUser(id int64) {
 			return
 		}
 		srv.saveChan <- user
+	})
+}
+
+func (srv *UserService) GetFriends() {
+	friends := srv.dbService.GetFriends(userID)
+
+	if len(friends) != 0 {
+		srv.UserListChan <- serialize(friends)
+	}
+
+	srv.get("/users/friends", func(r *http.Response) {
+		if r.StatusCode != http.StatusOK {
+			srv.ErrorsChan <- "Ошибка получения контактов"
+			return
+		}
+
+		body := getBodyString(r.Body)
+		srv.UserListChan <- body
+
+		friends := []User{}
+		deserialize(body, &friends)
+		srv.dbService.SaveFriends(userID, friends)
+	})
+}
+
+func (srv *UserService) AddFriend(login string) {
+	data := map[string]string{
+		"login": login,
+	}
+	srv.post("/users/friends", []byte(serialize(data)), func(r *http.Response) {
+		if r.StatusCode != http.StatusCreated {
+			srv.ErrorsChan <- "Ошибка добавления контакта"
+			return
+		}
+
+		body := getBodyString(r.Body)
+		srv.UserChan <- body
+
+		friend := User{}
+		deserialize(body, &friend)
+		srv.dbService.AddFriend(userID, friend.ID)
+	})
+}
+
+func (srv *UserService) DeleteFriend(id int64) {
+	srv.dbService.DeleteFriend(userID, id)
+
+	requestUrl := fmt.Sprintf("/user/friends/%d", id)
+	srv.delete(requestUrl, func(r *http.Response) {
+		if r.StatusCode != http.StatusOK {
+			srv.ErrorsChan <- "Ошибка удаления контакта"
+			return
+		}
+		srv.DeleteChan <- id
 	})
 }
 

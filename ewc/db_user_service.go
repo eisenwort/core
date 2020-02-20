@@ -129,8 +129,8 @@ func (srv *DbUserService) IsLogin() User {
 	return user
 }
 
-func (srv *DbUserService) GetFriends(userID int64) []*User {
-	users := make([]*User, 0)
+func (srv *DbUserService) GetFriends(userID int64) []User {
+	users := make([]User, 0)
 
 	dbExec(func(db *gorm.DB) {
 		db.Model(User{}).
@@ -141,13 +141,25 @@ func (srv *DbUserService) GetFriends(userID int64) []*User {
 	return users
 }
 
-func (srv *DbUserService) Get(id int64) *User {
-	user := new(User)
+func (srv *DbUserService) SaveFriends(userId int64, users []User) {
+	dbExec(func(db *gorm.DB) {
+		db.Where(Friend{UserID: userId}).Delete(&Friend{})
+
+		for _, user := range users {
+			friend := Friend{
+				UserID:   userId,
+				FriendID: user.ID,
+			}
+			db.Save(&friend)
+		}
+	})
+}
+
+func (srv *DbUserService) Get(id int64) User {
+	user := User{}
 
 	dbExec(func(db *gorm.DB) {
-		if err := db.First(user, id).Error; err != nil {
-			user = nil
-		}
+		db.First(&user, id)
 	})
 
 	return user
@@ -183,22 +195,20 @@ func (srv *DbUserService) Search(searchString string) []*User {
 	return users
 }
 
-func (srv *DbUserService) AddFriend(userID int64, friendID int64) *User {
-	user := new(User)
+func (srv *DbUserService) AddFriend(userId int64, friendID int64) User {
+	user := User{}
 
 	dbExec(func(db *gorm.DB) {
 		friendItem := Friend{
-			UserID:   userID,
+			UserID:   userId,
 			FriendID: friendID,
 		}
 		if err := db.Save(&friendItem).Error; err != nil {
 			log.Println("save new friend error:", err)
-			user = nil
 			return
 		}
 		if err := db.First(user, friendID).Error; err != nil {
 			log.Println("get user for added friend error:", err)
-			user = nil
 		}
 	})
 
@@ -213,6 +223,35 @@ func (srv *DbUserService) DeleteFriend(userID int64, friendID int64) bool {
 			log.Printf("delete friend %d for user %d, error: %s", friendID, userID, err.Error())
 			success = false
 		}
+
+		chats := []Chat{}
+		chatIds := []int64{}
+		query := `
+			select * from chats c 
+				join chats_users cu on c.id = cu.chat_id 
+			where
+				c.owner_id = ?
+				and c.personal = true
+				and cu.user_id in (?)
+			ORDER BY c.id;
+		`
+		// выбрать все персональные чаты где собеседником явлеяется  этот контак
+		db.Raw(query, userID, friendID).Scan(&chats)
+
+		for _, chat := range chats {
+			chatIds = append(chatIds, chat.ID)
+		}
+
+		// выбрать все персональные чаты контакта где собеседником является юзер
+		db.Raw(query, friendID, userID).Scan(&chats)
+
+		for _, chat := range chats {
+			chatIds = append(chatIds, chat.ID)
+		}
+
+		// удалить чаты и связи
+		db.Where("id in (?)", chatIds).Delete(&Chat{})
+		db.Where("chat_id in (?)", chatIds).Delete(&ChatUser{})
 	})
 
 	return success
