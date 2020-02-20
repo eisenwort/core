@@ -163,13 +163,11 @@ func (srv *DbUserService) GetUserData() UserData {
 	return userData
 }
 
-func (srv *DbUserService) GetByLogin(login string) *User {
-	user := new(User)
+func (srv *DbUserService) GetByLogin(login string) User {
+	user := User{}
 
 	dbExec(func(db *gorm.DB) {
-		if err := db.Where(&User{Login: login}).First(user).Error; err != nil {
-			user = nil
-		}
+		db.Where(&User{Login: login}).First(&user)
 	})
 
 	return user

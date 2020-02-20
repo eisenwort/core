@@ -79,7 +79,7 @@ func (srv *ChatService) Get(id int64) {
 
 func (srv *ChatService) CreatePersonalChat(login string) {
 	self := srv.dbUserService.Get(userID)
-	user := &User{}
+	user := User{}
 
 	if self.Reseted {
 		srv.ErrorsChan <- "Ошибка создания чата"
@@ -88,20 +88,22 @@ func (srv *ChatService) CreatePersonalChat(login string) {
 	srv.get("/users/login/"+login, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- fmt.Sprintf("Пользователя с ником %s не существует", login)
-			user = nil
 			return
 		}
-		if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+
+		body := getBodyString(r.Body)
+
+		//if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+		if err := json.Unmarshal([]byte(body), &user); err != nil {
 			srv.ErrorsChan <- "Ошибка создания чата"
-			user = nil
 		}
 	})
-	if user == nil {
+	if user.ID == 0 {
 		return
 	}
 
-	chat := &Chat{
-		Users:    []User{*user},
+	chat := Chat{
+		Users:    []User{user},
 		OwnerID:  userID,
 		Personal: true,
 	}
@@ -112,7 +114,6 @@ func (srv *ChatService) CreatePersonalChat(login string) {
 		}
 
 		data := getBodyString(r.Body)
-		chat := Chat{}
 
 		if err := json.Unmarshal([]byte(data), &chat); err != nil {
 			srv.ErrorsChan <- "Ошибка создания чата"
@@ -120,17 +121,14 @@ func (srv *ChatService) CreatePersonalChat(login string) {
 		}
 
 		srv.ChatChan <- data
+
+		deserialize(data, &chat)
 		srv.dbService.Create(chat)
 	})
 }
 
-func (srv *ChatService) Create(chatJson string) {
+func (srv *ChatService) Create(userLogin string) {
 	chat := Chat{}
-
-	if err := json.Unmarshal([]byte(chatJson), &chat); err != nil {
-		srv.ErrorsChan <- "Ошибка создания чата"
-		return
-	}
 
 	chat.OwnerID = userID
 	chat.Personal = true
@@ -141,26 +139,25 @@ func (srv *ChatService) Create(chatJson string) {
 		return
 	}
 	if chat.Personal {
-		login := chat.Users[0].Login
-		user := srv.dbUserService.GetByLogin(login)
+		user := srv.dbUserService.GetByLogin(userLogin)
 
-		if user == nil {
-			user := &User{}
-			srv.get("/users/login/"+login, func(r *http.Response) {
+		if user.ID == 0 {
+			user := User{}
+			srv.get("/users/login/"+userLogin, func(r *http.Response) {
 				if r.StatusCode != http.StatusOK {
-					srv.ErrorsChan <- fmt.Sprintf("Пользователя с ником %s не существует", login)
+					srv.ErrorsChan <- fmt.Sprintf("Пользователя с ником %s не существует", userLogin)
 					return
 				}
-				if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+				if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 					srv.ErrorsChan <- "Ошибка создания чата"
-					user = nil
 				}
 			})
-			if user == nil {
+			if user.ID == 0 {
+				srv.ErrorsChan <- fmt.Sprintf("Пользователя с ником %s не существует", userLogin)
 				return
 			}
 		} else {
-			chat.Users[0] = *user
+			chat.Users[0] = user
 		}
 	}
 

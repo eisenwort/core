@@ -33,18 +33,17 @@ type UserData struct {
 
 // @collection-wrapper
 type Message struct {
-	ID         int64     `gorm:"primary_key" json:"id"`
-	UserID     int64     `gorm:"column:user_id" json:"sender_id"`
-	ChatID     int64     `gorm:"column:chat_id" json:"chat_id"`
-	Text       string    `gorm:"column:text" json:"text"`
-	ImageURL   string    `gorm:"column:image_url" json:"image_url"`
-	FileURL    string    `gorm:"column:file_url" json:"file_url"`
-	Alghorithm string    `gorm:"column:alghorithm" json:"alghorithm"`
-	CreatedAt  time.Time `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt  time.Time `gorm:"column:updated_at" json:"updated_at"`
-	ExpiredAt  time.Time `gorm:"column:expired_at" json:"expired_at"`
-	User       User
-	Chat       Chat
+	ID        int64     `gorm:"primary_key" json:"id"`
+	UserID    int64     `gorm:"column:user_id" json:"sender_id"`
+	ChatID    int64     `gorm:"column:chat_id" json:"chat_id"`
+	Text      string    `gorm:"column:text" json:"text"`
+	ImageURL  string    `gorm:"column:image_url" json:"image_url"`
+	FileURL   string    `gorm:"column:file_url" json:"file_url"`
+	CreatedAt time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at"`
+	ExpiredAt time.Time `gorm:"column:expired_at" json:"expired_at"`
+	User      User
+	Chat      Chat
 }
 
 func (Message) TableName() string {

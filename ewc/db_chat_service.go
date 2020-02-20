@@ -107,7 +107,7 @@ func (srv *DbChatService) GetForUser(ownerID int64) ([]Chat, error) {
 	var chatError error = nil
 
 	dbExec(func(db *gorm.DB) {
-		if err := db.Where(Chat{OwnerID: ownerID}).Find(&chats).Error; err != nil {
+		if err := db.Where(Chat{OwnerID: ownerID}).Find(&chats).Error; err != nil && !gorm.IsRecordNotFoundError(err) {
 			chatError = errors.New("Невозможно получить чат")
 		}
 		for i := 0; i < len(chats); i++ {
