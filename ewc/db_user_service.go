@@ -207,7 +207,7 @@ func (srv *DbUserService) AddFriend(userId int64, friendID int64) User {
 			log.Println("save new friend error:", err)
 			return
 		}
-		if err := db.First(user, friendID).Error; err != nil {
+		if err := db.First(&user, friendID).Error; err != nil {
 			log.Println("get user for added friend error:", err)
 		}
 	})
