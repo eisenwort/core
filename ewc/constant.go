@@ -14,7 +14,7 @@ func init() {
 
 const (
 	dbName      = "ewc.sqlite"
-	chanSize    = 5
+	chanSize    = 2
 	IdHeader    = "X-Auth-Id"
 	TokenHeader = "X-Auth-Token"
 )
@@ -26,3 +26,4 @@ var connectionString = ""
 var jwtToken = ""
 var driver = ""
 var pageLimit = 0
+var currentUser = User{}

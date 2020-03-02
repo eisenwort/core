@@ -124,7 +124,6 @@ func (srv *UserService) Update(item *User) {
 			return
 		}
 		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-			// srv.UserChan <- nil
 			srv.ErrorsChan <- "Ошибка обновления"
 			return
 		}
@@ -179,6 +178,7 @@ func (srv *UserService) getUser(id int64) {
 			return
 		}
 		srv.saveChan <- user
+		currentUser = user
 	})
 }
 
@@ -189,7 +189,9 @@ func (srv *UserService) GetFriends() {
 		srv.UserListChan <- serialize(friends)
 	}
 
-	srv.get("/users/friends", func(r *http.Response) {
+	requestUrl := fmt.Sprintf("/users/%d/friends", userID)
+	srv.get(requestUrl, func(r *http.Response) {
+		log.Println(r.StatusCode, r.Status)
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка получения контактов"
 			return
@@ -208,7 +210,16 @@ func (srv *UserService) AddFriend(login string) {
 	data := map[string]string{
 		"login": login,
 	}
-	srv.post("/users/friends", []byte(serialize(data)), func(r *http.Response) {
+	requestUrl := fmt.Sprintf("/users/%d/friends", userID)
+	srv.post(requestUrl, serializeByte(data), func(r *http.Response) {
+		if r.StatusCode == http.StatusNotFound {
+			srv.ErrorsChan <- "Пользователь с таким логином не найден"
+			return
+		}
+		if r.StatusCode == http.StatusConflict {
+			srv.ErrorsChan <- "Пользователь уже добавлен"
+			return
+		}
 		if r.StatusCode != http.StatusCreated {
 			srv.ErrorsChan <- "Ошибка добавления контакта"
 			return
@@ -226,7 +237,7 @@ func (srv *UserService) AddFriend(login string) {
 func (srv *UserService) DeleteFriend(id int64) {
 	srv.dbService.DeleteFriend(userID, id)
 
-	requestUrl := fmt.Sprintf("/user/friends/%d", id)
+	requestUrl := fmt.Sprintf("/users/%d/friends/%d", userID, id)
 	srv.delete(requestUrl, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка удаления контакта"

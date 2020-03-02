@@ -33,7 +33,7 @@ func (pr *ContactsPresenter) DeleteFriend(id int64) {
 		pr.errorsChan <- "Неверный id"
 		return
 	}
-	go pr.DeleteFriend(id)
+	go pr.userService.DeleteFriend(id)
 }
 
 func (pr *ContactsPresenter) listeners() {

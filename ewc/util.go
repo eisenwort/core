@@ -70,14 +70,18 @@ func getClaims(token string) JwtClaims {
 }
 
 func serialize(item interface{}) string {
+	return string(serializeByte(item))
+}
+
+func serializeByte(item interface{}) []byte {
 	data, err := json.Marshal(item)
 
 	if err != nil {
 		log.Println("serialize object error:", err)
-		return "{}"
+		return []byte("{}")
 	}
 
-	return string(data)
+	return data
 }
 
 func deserialize(data string, item interface{}) {

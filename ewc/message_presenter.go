@@ -1,5 +1,7 @@
 package ewc
 
+import "time"
+
 type MessagePresenter struct {
 	BasePresenter
 	view           MessageView
@@ -17,12 +19,15 @@ func NewMessagePresenter(view MessageView) *MessagePresenter {
 	return pr
 }
 
-func (pr *MessagePresenter) Send(msg string, text string) {
-	if text == "" {
+func (pr *MessagePresenter) Send(msg string) {
+	message := Message{}
+	deserialize(msg, &message)
+
+	if message.Text == "" {
 		pr.errorsChan <- "Невозможно отправить пустое сообщение"
 		return
 	}
-	go pr.messageService.Send(msg, text)
+	go pr.messageService.Send(message)
 }
 
 func (pr *MessagePresenter) Delete(jsonData string) {
@@ -48,6 +53,8 @@ func (pr *MessagePresenter) GetByChat(chatID int64, page int) {
 }
 
 func (pr *MessagePresenter) listeners() {
+	checkMessageTimer := time.NewTicker(10 * time.Second).C
+
 	for {
 		select {
 		case msg := <-pr.messageService.MessageChan:
@@ -62,6 +69,8 @@ func (pr *MessagePresenter) listeners() {
 			pr.view.ShowInfo(infoString)
 		case errorString := <-pr.errorsChan:
 			pr.view.ShowError(errorString)
+		case <-checkMessageTimer:
+			break
 		}
 	}
 }

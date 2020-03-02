@@ -12,6 +12,9 @@ import (
 var db *gorm.DB
 
 func dbExec(closure func(db *gorm.DB)) {
+	if currentUser.Reseted {
+		return
+	}
 	db := getDb()
 
 	if db == nil {

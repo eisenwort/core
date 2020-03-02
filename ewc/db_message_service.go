@@ -83,6 +83,19 @@ func (srv *DbMessageService) GetByChat(chatID int64, page int) []Message {
 	return result
 }
 
+func (srv *DbMessageService) Update(id int64, text string) error {
+	fields := map[string]interface{}{
+		"text":       text,
+		"updated_at": time.Now(),
+	}
+	dbExec(func(db *gorm.DB) {
+		if err := db.Where(&Message{ID: id}).Updates(fields).Error; err != nil {
+			log.Println("update message error:", err)
+		}
+	})
+	return nil
+}
+
 func (srv *DbMessageService) SetAllIsRead(chatID int64) {
 	dbExec(func(db *gorm.DB) {
 		//query := ``

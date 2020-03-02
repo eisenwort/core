@@ -36,17 +36,11 @@ func NewMessageService() *MessageService {
 	return srv
 }
 
-func (srv *MessageService) Send(jsonData string, text string) {
-	user := srv.dbUserService.Get(userID)
-
-	if user.Reseted {
+func (srv *MessageService) Send(msg Message) {
+	if currentUser.Reseted {
 		srv.ErrorsChan <- "Произошла неизвестная ошибка"
 		return
 	}
-
-	msg := Message{}
-	deserialize(jsonData, &msg)
-
 	srv.api.post("/messages", msg, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка отправки сообщения"
@@ -77,9 +71,7 @@ func (srv *MessageService) Delete(msg Message) {
 }
 
 func (srv *MessageService) GetByChat(chatID int64, page int) {
-	user := srv.dbUserService.Get(userID)
-
-	if user.Reseted {
+	if currentUser.Reseted {
 		srv.ErrorsChan <- "Произошла неизвестная ошибка"
 		return
 	}

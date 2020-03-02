@@ -73,6 +73,9 @@ func (srv *ApiService) delete(url string, closure func(r *http.Response)) {
 }
 
 func (srv *ApiService) createRequest(data ApiRequest, closure func(r *http.Response)) {
+	if currentUser.Reseted {
+		return
+	}
 	request, err := http.NewRequest(
 		data.Method,
 		baseUrl+data.RequestUrl,
