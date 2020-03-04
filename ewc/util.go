@@ -44,7 +44,10 @@ func (u *Util) CloseApp() {
 		log.Println("close db error:", err)
 	}
 
+	httpClient.CloseIdleConnections()
+
 	// encrypt DB
+
 }
 
 func Contains(arr []string, str string) bool {

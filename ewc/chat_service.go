@@ -8,7 +8,6 @@ import (
 
 type ChatService struct {
 	BaseService
-	ApiService
 	dbService      *DbChatService
 	dbUserService  *DbUserService
 	saveListChat   chan []Chat
@@ -40,7 +39,7 @@ func (srv *ChatService) GetChats() {
 	if err == nil {
 		srv.ChatListChan <- serialize(chats)
 	}
-	srv.get("/chats", func(r *http.Response) {
+	httpGet("/chats", func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка получения чатов"
 			return
@@ -56,14 +55,14 @@ func (srv *ChatService) GetChats() {
 }
 
 func (srv *ChatService) Get(id int64) {
-	chat, err := srv.dbService.Get(id, []string{"messages"})
+	chat, err := srv.dbService.Get(id, []string{""})
 
 	if err == nil {
 		srv.ChatChan <- serialize(chat)
 	}
 
-	requestUrl := fmt.Sprintf("/chats/%d?include=messages", id)
-	srv.get(requestUrl, func(r *http.Response) {
+	requestUrl := fmt.Sprintf("/chats/%d", id)
+	httpGet(requestUrl, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка получения чата"
 			return
@@ -85,7 +84,7 @@ func (srv *ChatService) CreatePersonalChat(login string) {
 		srv.ErrorsChan <- "Ошибка создания чата"
 		return
 	}
-	srv.get("/users/login/"+login, func(r *http.Response) {
+	httpGet("/users/login/"+login, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- fmt.Sprintf("Пользователя с ником %s не существует", login)
 			return
@@ -103,7 +102,7 @@ func (srv *ChatService) CreatePersonalChat(login string) {
 		OwnerID:  userID,
 		Personal: true,
 	}
-	srv.post("/chats", chat, func(r *http.Response) {
+	httpPost("/chats", chat, func(r *http.Response) {
 		if r.StatusCode != http.StatusCreated {
 			srv.ErrorsChan <- "Ошибка создания чата"
 			return
@@ -142,7 +141,7 @@ func (srv *ChatService) Create(userLogin string) {
 
 		if user.ID == 0 {
 			user := User{}
-			srv.get("/users/login/"+userLogin, func(r *http.Response) {
+			httpGet("/users/login/"+userLogin, func(r *http.Response) {
 				if r.StatusCode != http.StatusOK {
 					srv.ErrorsChan <- fmt.Sprintf("Пользователя с ником %s не существует", userLogin)
 					return
@@ -160,7 +159,7 @@ func (srv *ChatService) Create(userLogin string) {
 		}
 	}
 
-	srv.post("/chats", chat, func(r *http.Response) {
+	httpPost("/chats", chat, func(r *http.Response) {
 		if r.StatusCode != http.StatusCreated {
 			srv.ErrorsChan <- "Ошибка создания чата"
 			return
@@ -174,7 +173,7 @@ func (srv *ChatService) Create(userLogin string) {
 func (srv *ChatService) Delete(chat *Chat) {
 	requestUrl := fmt.Sprintf("/chats/%d", chat.ID)
 
-	srv.delete(requestUrl, func(r *http.Response) {
+	httpDelete(requestUrl, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка удаления чата"
 			return
@@ -187,7 +186,7 @@ func (srv *ChatService) Delete(chat *Chat) {
 func (srv *ChatService) Exit(chat *Chat) {
 	requestUrl := fmt.Sprintf("/chats/%d/exit", chat.ID)
 
-	srv.delete(requestUrl, func(r *http.Response) {
+	httpDelete(requestUrl, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка выхода из чата"
 			return
@@ -201,7 +200,7 @@ func (srv *ChatService) Clean(chat *Chat) {
 	requestUrl := fmt.Sprintf("/chats/%d/clean", chat.ID)
 	result := true
 
-	srv.delete(requestUrl, func(r *http.Response) {
+	httpDelete(requestUrl, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			result = false
 			return

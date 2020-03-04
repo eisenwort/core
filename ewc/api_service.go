@@ -9,29 +9,20 @@ import (
 	"time"
 )
 
-type ApiService struct {
-	client http.Client
+var httpClient = http.Client{
+	Timeout: time.Second * 10,
 }
 
-func NewApiService() *ApiService {
-	srv := new(ApiService)
-	srv.client = http.Client{
-		Timeout: time.Second * 10,
-	}
-
-	return srv
-}
-
-func (srv *ApiService) get(url string, closure func(r *http.Response)) {
+func httpGet(url string, closure func(r *http.Response)) {
 	request := ApiRequest{
 		Body:       nil,
 		Method:     http.MethodGet,
 		RequestUrl: url,
 	}
-	srv.createRequest(request, closure)
+	createRequest(request, closure)
 }
 
-func (srv *ApiService) post(url string, data interface{}, closure func(r *http.Response)) {
+func httpPost(url string, data interface{}, closure func(r *http.Response)) {
 	jsonData, err := json.Marshal(data)
 
 	if err != nil {
@@ -44,14 +35,14 @@ func (srv *ApiService) post(url string, data interface{}, closure func(r *http.R
 		Method:     http.MethodPost,
 		RequestUrl: url,
 	}
-	srv.createRequest(request, closure)
+	createRequest(request, closure)
 }
 
-func (srv *ApiService) put(url string, data interface{}, closure func(r *http.Response)) {
+func httpPut(url string, data interface{}, closure func(r *http.Response)) {
 	jsonData, err := json.Marshal(data)
 
 	if err != nil {
-		log.Println("marshall POST data error:", err)
+		log.Println("marshall PUT data error:", err)
 		return
 	}
 
@@ -60,19 +51,19 @@ func (srv *ApiService) put(url string, data interface{}, closure func(r *http.Re
 		Method:     http.MethodPut,
 		RequestUrl: url,
 	}
-	srv.createRequest(request, closure)
+	createRequest(request, closure)
 }
 
-func (srv *ApiService) delete(url string, closure func(r *http.Response)) {
+func httpDelete(url string, closure func(r *http.Response)) {
 	request := ApiRequest{
 		Body:       nil,
 		Method:     http.MethodDelete,
 		RequestUrl: url,
 	}
-	srv.createRequest(request, closure)
+	createRequest(request, closure)
 }
 
-func (srv *ApiService) createRequest(data ApiRequest, closure func(r *http.Response)) {
+func createRequest(data ApiRequest, closure func(r *http.Response)) {
 	if currentUser.Reseted {
 		return
 	}
@@ -92,7 +83,7 @@ func (srv *ApiService) createRequest(data ApiRequest, closure func(r *http.Respo
 	request.Header.Set(TokenHeader, jwtToken)
 	request.Header.Set("Content-Type", "application/json")
 
-	response, err := srv.client.Do(request)
+	response, err := httpClient.Do(request)
 
 	if err != nil {
 		log.Printf("send %s request on %s error: %s", data.Method, data.RequestUrl, err.Error())

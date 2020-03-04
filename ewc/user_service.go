@@ -11,7 +11,6 @@ import (
 )
 
 type UserService struct {
-	ApiService
 	saveChan     chan User
 	getChan      chan int64
 	dbService    *DbUserService
@@ -45,7 +44,7 @@ func (srv *UserService) Register(login, password, passwordForReset string) {
 		"reset_password": passwordForReset,
 	}
 
-	srv.post("/registration", data, func(r *http.Response) {
+	httpPost("/registration", data, func(r *http.Response) {
 		if r.StatusCode == http.StatusConflict {
 			srv.ErrorsChan <- "Логин уже занят"
 			return
@@ -90,7 +89,7 @@ func (srv *UserService) IsLogin() {
 	jwtToken = userData.RefreshToken
 	requestUrl := fmt.Sprintf("/users/%d/refresh", userID)
 
-	srv.post(requestUrl, nil, func(r *http.Response) {
+	httpPost(requestUrl, nil, func(r *http.Response) {
 		tokenData := TokenData{}
 
 		if r.StatusCode != http.StatusOK {
@@ -118,7 +117,7 @@ func (srv *UserService) Update(item *User) {
 	requestUrl := fmt.Sprintf("/users/%d", item.ID)
 	user := User{}
 
-	srv.put(requestUrl, item, func(r *http.Response) {
+	httpPut(requestUrl, item, func(r *http.Response) {
 		if r.StatusCode == http.StatusConflict {
 			srv.ErrorsChan <- "Логин уже занят"
 			return
@@ -138,7 +137,7 @@ func (srv *UserService) Login(login, password string) {
 	}
 	tokenData := TokenData{}
 
-	srv.post("/login", data, func(r *http.Response) {
+	httpPost("/login", data, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Неверный логин или пароль"
 			return
@@ -152,6 +151,8 @@ func (srv *UserService) Login(login, password string) {
 		srv.ErrorsChan <- "Неверный логин или пароль"
 		return
 	}
+
+	//decryptDb()
 
 	jwtToken = tokenData.Token
 	srv.LoginChan <- true
@@ -173,7 +174,7 @@ func (srv *UserService) getUser(id int64) {
 	requestUrl := fmt.Sprintf("/users/%d", id)
 	user := User{}
 
-	srv.get(requestUrl, func(r *http.Response) {
+	httpGet(requestUrl, func(r *http.Response) {
 		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 			return
 		}
@@ -190,7 +191,7 @@ func (srv *UserService) GetFriends() {
 	}
 
 	requestUrl := fmt.Sprintf("/users/%d/friends", userID)
-	srv.get(requestUrl, func(r *http.Response) {
+	httpGet(requestUrl, func(r *http.Response) {
 		log.Println(r.StatusCode, r.Status)
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка получения контактов"
@@ -211,7 +212,7 @@ func (srv *UserService) AddFriend(login string) {
 		"login": login,
 	}
 	requestUrl := fmt.Sprintf("/users/%d/friends", userID)
-	srv.post(requestUrl, serializeByte(data), func(r *http.Response) {
+	httpPost(requestUrl, serializeByte(data), func(r *http.Response) {
 		if r.StatusCode == http.StatusNotFound {
 			srv.ErrorsChan <- "Пользователь с таким логином не найден"
 			return
@@ -238,7 +239,7 @@ func (srv *UserService) DeleteFriend(id int64) {
 	srv.dbService.DeleteFriend(userID, id)
 
 	requestUrl := fmt.Sprintf("/users/%d/friends/%d", userID, id)
-	srv.delete(requestUrl, func(r *http.Response) {
+	httpDelete(requestUrl, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка удаления контакта"
 			return

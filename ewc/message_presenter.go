@@ -6,6 +6,8 @@ type MessagePresenter struct {
 	BasePresenter
 	view           MessageView
 	messageService *MessageService
+	lastChatId     int64
+	lastPage       int
 }
 
 func NewMessagePresenter(view MessageView) *MessagePresenter {
@@ -48,8 +50,12 @@ func (pr *MessagePresenter) GetByChat(chatID int64, page int) {
 	if page <= 0 {
 		return
 	}
+
 	go pr.messageService.GetByChat(chatID, page)
 	go pr.messageService.SetAllIsRead(chatID)
+
+	pr.lastPage = page
+	pr.lastChatId = chatID
 }
 
 func (pr *MessagePresenter) listeners() {
@@ -70,7 +76,7 @@ func (pr *MessagePresenter) listeners() {
 		case errorString := <-pr.errorsChan:
 			pr.view.ShowError(errorString)
 		case <-checkMessageTimer:
-			break
+			pr.GetByChat(pr.lastChatId, pr.lastPage)
 		}
 	}
 }

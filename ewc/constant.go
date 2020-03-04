@@ -27,3 +27,5 @@ var jwtToken = ""
 var driver = ""
 var pageLimit = 0
 var currentUser = User{}
+var encryptKey = ""
+var userPassword = ""

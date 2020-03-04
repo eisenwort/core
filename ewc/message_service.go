@@ -7,20 +7,18 @@ import (
 
 type MessageService struct {
 	BaseService
-	api               *ApiService
 	dbService         *DbMessageService
 	dbUserService     *DbUserService
 	saveChan          chan Message
 	saveListChan      chan []Message
+	lastMessageId     int64
 	MessageListChan   chan string
 	MessageChan       chan string
-	IdChan            chan int64
 	MessageDeleteChan chan int64
 }
 
 func NewMessageService() *MessageService {
 	srv := new(MessageService)
-	srv.api = NewApiService()
 	srv.dbService = NewDbMessageService()
 	srv.dbUserService = NewDbUserService()
 	srv.saveChan = make(chan Message, chanSize)
@@ -30,18 +28,13 @@ func NewMessageService() *MessageService {
 	srv.MessageChan = make(chan string, chanSize)
 	srv.MessageListChan = make(chan string, chanSize)
 	srv.MessageDeleteChan = make(chan int64, chanSize)
-	srv.IdChan = make(chan int64, chanSize)
 
 	go srv.listeners()
 	return srv
 }
 
 func (srv *MessageService) Send(msg Message) {
-	if currentUser.Reseted {
-		srv.ErrorsChan <- "Произошла неизвестная ошибка"
-		return
-	}
-	srv.api.post("/messages", msg, func(r *http.Response) {
+	httpPost("/messages", msg, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
 			srv.ErrorsChan <- "Ошибка отправки сообщения"
 			return
@@ -59,7 +52,7 @@ func (srv *MessageService) Delete(msg Message) {
 	id := msg.ID
 	requestUrl := fmt.Sprintf("/messages/%d", msg.ID)
 
-	srv.api.delete(requestUrl, func(r *http.Response) {
+	httpDelete(requestUrl, func(r *http.Response) {
 		isDeleted := r.StatusCode == http.StatusOK
 
 		if isDeleted {
@@ -70,30 +63,39 @@ func (srv *MessageService) Delete(msg Message) {
 	})
 }
 
+// TODO: refactor when implement websocket
 func (srv *MessageService) GetByChat(chatID int64, page int) {
-	if currentUser.Reseted {
-		srv.ErrorsChan <- "Произошла неизвестная ошибка"
-		return
-	}
-
 	messages := srv.dbService.GetByChat(chatID, page)
+	cnt := len(messages)
 
-	if messages != nil {
-		srv.MessageListChan <- serialize(messages)
+	if messages != nil && cnt != 0 {
+		if messages[cnt-1].ID > srv.lastMessageId {
+			// TODO: decrypt all messages
+			srv.MessageListChan <- serialize(messages)
+			srv.lastMessageId = messages[cnt-1].ID
+		}
 	}
 
-	requestUrl := fmt.Sprintf("/chats/%d/messages", chatID)
-	srv.api.get(requestUrl, func(r *http.Response) {
+	requestUrl := createUrl(fmt.Sprintf("/chats/%d/messages", chatID), map[string]string{
+		"page": fmt.Sprintf("%d", page),
+	})
+	httpGet(requestUrl, func(r *http.Response) {
 		if r.StatusCode != http.StatusOK {
-			srv.ErrorsChan <- "Ошибка олучения сообщений"
+			srv.ErrorsChan <- "Ошибка получения сообщений"
 			return
 		}
 
 		jsonData := getBodyString(r.Body)
-		srv.MessageListChan <- jsonData
+		messages = []Message{}
 
 		deserialize(jsonData, &messages)
-		srv.saveListChan <- messages
+		cnt = len(messages)
+
+		if cnt != 0 && messages[cnt-1].ID > srv.lastMessageId {
+			// TODO: decrypt all messages
+			srv.MessageListChan <- jsonData
+			srv.saveListChan <- messages
+		}
 	})
 }
 
