@@ -84,7 +84,7 @@ type Chat struct {
 	ID             int64     `gorm:"primary_key" json:"id"`
 	OwnerID        int64     `gorm:"column:owner_id" json:"owner_id"`
 	UnreadMessages int       `gorm:"column:unread_messages" json:"unread_messages"`
-	Name           string    `gorm:"column:user_id" json:"name"`
+	Name           string    `gorm:"column:name" json:"name"`
 	LastMessage    string    `gorm:"-" json:"last_message"`
 	Personal       bool      `gorm:"column:personal" json:"personal"`
 	CreatedAt      time.Time `gorm:"column:created_at" json:"created_at"`

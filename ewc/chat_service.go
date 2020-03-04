@@ -89,7 +89,11 @@ func (srv *ChatService) CreatePersonalChat(login string) {
 			srv.ErrorsChan <- fmt.Sprintf("Пользователя с ником %s не существует", login)
 			return
 		}
-		if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+
+		body := getBodyString(r.Body)
+
+		//if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+		if err := json.Unmarshal([]byte(body), &user); err != nil {
 			srv.ErrorsChan <- "Ошибка создания чата"
 		}
 	})

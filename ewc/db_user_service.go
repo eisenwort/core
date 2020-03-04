@@ -179,9 +179,7 @@ func (srv *DbUserService) GetByLogin(login string) User {
 	user := User{}
 
 	dbExec(func(db *gorm.DB) {
-		if err := db.Where(&User{Login: login}).First(user).Error; err != nil {
-			//user = nil
-		}
+		db.Where(&User{Login: login}).First(&user)
 	})
 
 	return user
@@ -209,7 +207,7 @@ func (srv *DbUserService) AddFriend(userId int64, friendID int64) User {
 			log.Println("save new friend error:", err)
 			return
 		}
-		if err := db.First(user, friendID).Error; err != nil {
+		if err := db.First(&user, friendID).Error; err != nil {
 			log.Println("get user for added friend error:", err)
 		}
 	})
@@ -229,8 +227,8 @@ func (srv *DbUserService) DeleteFriend(userID int64, friendID int64) bool {
 		chats := []Chat{}
 		chatIds := []int64{}
 		query := `
-			select * from chats c 
-				join chats_users cu on c.id = cu.chat_id 
+			select * from chats c
+				join chats_users cu on c.id = cu.chat_id
 			where
 				c.owner_id = ?
 				and c.personal = true
