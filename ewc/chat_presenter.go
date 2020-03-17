@@ -33,8 +33,11 @@ func NewChatPresenter(view ChatView) *ChatPresenter {
 	go pr.chatService.Create(chat)
 }*/
 
-func (pr *ChatPresenter) Delete(chat *Chat) {
-	if chat == nil {
+func (pr *ChatPresenter) Delete(chatJson string) {
+	chat := Chat{}
+	deserialize(chatJson, &chat)
+
+	if chat.ID == 0 {
 		return
 	}
 	if chat.OwnerID != userID {
@@ -44,8 +47,11 @@ func (pr *ChatPresenter) Delete(chat *Chat) {
 	go pr.chatService.Delete(chat)
 }
 
-func (pr *ChatPresenter) Exit(chat *Chat) {
-	if chat == nil {
+func (pr *ChatPresenter) Exit(chatJson string) {
+	chat := Chat{}
+	deserialize(chatJson, &chat)
+
+	if chat.ID == 0 {
 		return
 	}
 	if chat.Personal {
@@ -70,8 +76,11 @@ func (pr *ChatPresenter) Create(userLogin string) {
 	go pr.chatService.Create(userLogin)
 }
 
-func (pr *ChatPresenter) Clean(chat *Chat) {
-	if chat == nil {
+func (pr *ChatPresenter) Clean(chatJson string) {
+	chat := Chat{}
+	deserialize(chatJson, &chat)
+
+	if chat.ID == 0 {
 		return
 	}
 	if !chat.Personal {

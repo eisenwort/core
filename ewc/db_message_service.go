@@ -102,6 +102,15 @@ func (srv *DbMessageService) SetAllIsRead(chatID int64) {
 	})
 }
 
+func (srv *DbMessageService) GetLastId(chatId int64) int64 {
+	message := Message{}
+	dbExec(func(db *gorm.DB) {
+		db.Where(Message{ChatID: chatId}).Select("id").Last(&message)
+	})
+
+	return message.ID
+}
+
 func (srv *DbMessageService) listeners() {
 	for {
 		select {

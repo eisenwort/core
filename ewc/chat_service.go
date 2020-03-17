@@ -174,7 +174,7 @@ func (srv *ChatService) Create(userLogin string) {
 	})
 }
 
-func (srv *ChatService) Delete(chat *Chat) {
+func (srv *ChatService) Delete(chat Chat) {
 	requestUrl := fmt.Sprintf("/chats/%d", chat.ID)
 
 	httpDelete(requestUrl, func(r *http.Response) {
@@ -187,7 +187,7 @@ func (srv *ChatService) Delete(chat *Chat) {
 	})
 }
 
-func (srv *ChatService) Exit(chat *Chat) {
+func (srv *ChatService) Exit(chat Chat) {
 	requestUrl := fmt.Sprintf("/chats/%d/exit", chat.ID)
 
 	httpDelete(requestUrl, func(r *http.Response) {
@@ -200,7 +200,7 @@ func (srv *ChatService) Exit(chat *Chat) {
 	})
 }
 
-func (srv *ChatService) Clean(chat *Chat) {
+func (srv *ChatService) Clean(chat Chat) {
 	requestUrl := fmt.Sprintf("/chats/%d/clean", chat.ID)
 	result := true
 
