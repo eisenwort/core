@@ -8,6 +8,7 @@ type View interface {
 type LoginView interface {
 	View
 	DidLogin(isSuccess bool)
+	DidGetId(id int64)
 }
 
 type ChatListView interface {

@@ -41,8 +41,6 @@ func (srv *MessageService) Send(msg Message) {
 		}
 
 		jsonData := getBodyString(r.Body)
-		srv.MessageChan <- jsonData
-
 		deserialize(jsonData, &msg)
 		srv.saveChan <- msg
 	})

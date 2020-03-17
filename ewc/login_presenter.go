@@ -28,6 +28,10 @@ func (pr *LoginPresenter) IsLogin() {
 	go pr.userService.IsLogin()
 }
 
+func (pr *LoginPresenter) GetId() {
+	pr.view.DidGetId(userID)
+}
+
 func (pr *LoginPresenter) Register(login, password, passwordForReset string) {
 	if login == "" || password == "" {
 		pr.errorsChan <- "Логин и пароль обязательны"
