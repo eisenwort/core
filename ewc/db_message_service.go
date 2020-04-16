@@ -63,17 +63,22 @@ func (srv *DbMessageService) Delete(msg Message) bool {
 	return result
 }
 
-func (srv *DbMessageService) GetByChat(chatID int64, page int) []Message {
+func (srv *DbMessageService) GetByChat(filter MessageFilter) []Message {
 	result := make([]Message, 0)
-	srv.updateChatChan <- chatID
+	srv.updateChatChan <- filter.ChatId
 
 	dbExec(func(db *gorm.DB) {
-		query := db.Where(Message{ChatID: chatID}).Order("created_at desc")
+		query := db.Where(Message{ChatID: filter.ChatId}).Order("created_at desc")
 
-		if page != 0 {
-			offset := pageLimit * (page - 1)
-			query = query.Offset(offset).Limit(pageLimit)
+		if filter.StartId != 0 && filter.EndId != 0 {
+			query = query.Where("id > ? and <= ?", filter.StartId, filter.EndId)
+		} else if filter.StartId != 0 && filter.EndId == 0 {
+			query = query.Where("id > ?", filter.StartId)
 		}
+
+		offset := pageLimit * (filter.Page - 1)
+		query = query.Offset(offset).Limit(pageLimit)
+
 		if err := query.Find(&result).Error; err != nil {
 			log.Println("get message by chat error:", err)
 			result = nil

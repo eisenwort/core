@@ -152,3 +152,10 @@ type SetupData struct {
 	ConnectionString string
 	PageLimit        int
 }
+
+type MessageFilter struct {
+	ChatId  int64 `json:"chat_id"`
+	StartId int64 `json:"start_id"`
+	EndId   int64 `json:"end_id"`
+	Page    int   `json:"page"`
+}

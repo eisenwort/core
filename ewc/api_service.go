@@ -22,6 +22,15 @@ func httpGet(url string, closure func(r *http.Response)) {
 	createRequest(request, closure)
 }
 
+func httpHead(url string, closure func(r *http.Response)) {
+	request := ApiRequest{
+		Body:       nil,
+		Method:     http.MethodHead,
+		RequestUrl: url,
+	}
+	createRequest(request, closure)
+}
+
 func httpPost(url string, data interface{}, closure func(r *http.Response)) {
 	jsonData, err := json.Marshal(data)
 
